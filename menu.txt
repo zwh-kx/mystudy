@@ -1,0 +1,275 @@
+/*****************************************************************/
+// /* Menu.c
+//  *
+//  *  Created on: 2023/3/7
+//  *  Author: WHJ
+//  *
+//  >>本菜单适用于较为简单的基本调参，存在部分情况未充分考量的情况
+//  >>但是由于适用场景为智能车项目，提供显示的物理载体为IPS200,因
+//  >>此部分可能导致数组越界的情况可以忽略。
+/*****************************************************************/
+#include "zf_common_headfile.h"
+
+float a = 10;
+int key1_flag,key2_flag,key3_flag,key4_flag;
+
+#define FLASH_SECTION_INDEX       (0)                                 // 存储数据用的扇区
+#define FLASH_PAGE_INDEX          (11)                                // 存储数据用的页码 倒数第一个页码注意tc264与377的区别
+
+typedef struct
+{
+    int menu_id;                                        // 菜单索引号
+    char menu_name[30];                                 // 菜单显示名称
+    void (*menu_action)(float32 *param, char name[30]); // 子菜单执行函数
+    float32 *param;                                     // 需要传入处理的参数
+} menu_item;
+// 由于IPS200 屏幕大小为240X180，逐飞提供默认字库大小为8X16，因此屏幕横向无法显示超过30个字符
+
+menu_item *current_menu_item;
+
+int key_switch()
+{
+    int key_state = 0;
+    if(key_get_state(KEY_1) == KEY_SHORT_PRESS) key1_flag = 1;
+    else if(key_get_state(KEY_2) == KEY_SHORT_PRESS) key2_flag = 1;
+    else if(key_get_state(KEY_3) == KEY_SHORT_PRESS) key3_flag = 1;
+    else if(key_get_state(KEY_4) == KEY_SHORT_PRESS) key4_flag = 1;
+    key_state = ((key1_flag || key2_flag || key3_flag || key4_flag) == 1) ?  1 : 0;
+    return key_state;
+}
+
+
+void key_flag_clear()
+{
+    key1_flag = 0,key2_flag = 0,key3_flag = 0,key4_flag = 0;
+}
+
+
+void menu_tuning(float32 *tuning, char name[30]) // 调参界面菜单
+{
+    char buf[30]; // 由于IPS200 屏幕大小为240X180，逐飞提供默认字库大小为8X16，因此屏幕横向无法显示超过30个字符
+    char *menu_name = name;
+    float32 level[4] = {0.01, 0.1, 1, 10};
+    int current_level = 0;
+
+    ips200_clear();
+    ips200_show_string(1, 0, "Change_level:");
+    sprintf(buf, "X%5.2f: ", level[current_level]);
+    ips200_show_string(1, 30, buf);
+    key_flag_clear();
+
+    while (1)
+    {
+        if (key_switch())
+        {
+            if (key1_flag && current_level < 4)
+            {
+                current_level += 1;
+            }
+            else if (key2_flag && current_level > 0)
+            {
+                current_level -= 1;
+            }
+            else if (key3_flag)
+            {
+                ips200_clear();
+                sprintf(buf, "%s: ", menu_name);
+                ips200_show_string(1, 0, buf);
+                sprintf(buf, "%5.2f", *tuning);
+                ips200_show_string(1, 30, buf);
+                key_flag_clear();
+                while (1)
+                {
+                    if (key_switch())
+                    {
+                        if (key1_flag)
+                        {
+                            *tuning += level[current_level];
+                        }
+                        else if (key2_flag)
+                        {
+                            *tuning -= level[current_level];
+                        }
+                        else if (key3_flag)
+                        {
+                            return;
+                        }
+                        else if (key4_flag)
+                        {
+                            flah_storage();
+                        }
+                        ips200_clear();
+                        sprintf(buf, "%s: ", menu_name);
+                        ips200_show_string(1, 0, buf);
+                        sprintf(buf, "%5.2f", *tuning);
+                        ips200_show_string(1, 30, buf);
+                        key_flag_clear();
+                    }
+                }
+            }
+
+            ips200_clear();
+            ips200_show_string(1, 0, "Change_level:");
+            sprintf(buf, "X %5.2f: ", level[current_level]);
+            ips200_show_string(1, 30, buf);
+            key_flag_clear();
+        }
+    }
+}
+
+menu_item menu[] = {
+        {1, "Tuning Mode", NULL, NULL},                                        // 调参模式
+        {11, "Motor", NULL, NULL},                                              // 电机参数调整
+        {111, "Motor_L", NULL, NULL},                                       // 电机参数调整——变积分
+        {1111,"P", menu_tuning, &pid_i_L.Kp},
+        {1112,"I", menu_tuning, &pid_i_L.Ki},
+        {1114, "Back to Main", NULL, NULL},                                   // 回到主菜单
+
+        {112, "Motor_R", NULL, NULL},                                       // 电机参数调整——变积分
+        {1121,"P", menu_tuning, &pid_i_R.Kp},
+        {1122,"I", menu_tuning, &pid_i_R.Ki},
+        {1123, "Back to Main", NULL, NULL},                                   // 回到主菜单
+
+//        {3, "Departure Mode", NULL, NULL}                                      // 发车模式
+
+};
+
+bool have_sub_menu(int menu_id) // 查看是否存在子菜单
+{
+    for (int i = 0; i < sizeof(menu) / sizeof(menu[0]); i++)
+    {
+        if (menu[i].menu_id / 10 == menu_id)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+int show_sub_menu(int parent_id, int highlight_col) // 显示子菜单，以及当前高亮菜单
+{
+    ips200_clear();
+    int item_idx = 0;
+    for (int i = 0; i < sizeof(menu) / sizeof(menu[0]); i++)
+    {
+        if (menu[i].menu_id / 10 == parent_id)
+        {
+            if (item_idx == highlight_col)
+            {
+                current_menu_item = &menu[i];
+                ips200_set_color(RGB565_RED, RGB565_BLACK);
+            }
+            else
+            {
+                ips200_set_color(RGB565_GREEN, RGB565_BLACK);
+            }
+            ips200_show_string(1, 30 * item_idx, menu[i].menu_name);
+            item_idx++;
+        }
+    }
+    return item_idx;
+}
+
+void Menu_Switch(void)
+{
+
+    int parent_menu_id = 0;
+    int highlight_col = 0; // 设定高亮行号
+    int menu_item_count = show_sub_menu(parent_menu_id, highlight_col);
+    while (1)
+    {
+        if (key_switch()) // 读取按键函数
+        {
+            if (key1_flag && highlight_col > 0) // 按下按键1减少当前行数
+            {
+                highlight_col--;
+            }
+            else if (key2_flag && highlight_col < menu_item_count - 1) // 按下按键2增加当前行数
+            {
+                highlight_col++;
+            }
+            else if (key3_flag)
+            {
+                if (have_sub_menu(current_menu_item->menu_id))
+                {
+                    highlight_col = 0;
+                    parent_menu_id = current_menu_item->menu_id;
+                }
+                else if (strcmp(current_menu_item->menu_name, "Back to Main") == 0) // 如果当前菜单为“Back to Main”，则返回主界面
+                {
+                    highlight_col = 0;
+                    parent_menu_id = 0;
+                }
+                else if (current_menu_item->menu_action)
+                {
+                    current_menu_item->menu_action(current_menu_item->param, current_menu_item->menu_name);
+                }
+            }
+
+            menu_item_count = show_sub_menu(parent_menu_id, highlight_col);
+            key_flag_clear();
+        }
+    }
+}
+
+void flah_storage()
+{
+    if(flash_check(FLASH_SECTION_INDEX, FLASH_PAGE_INDEX))                      // 判断是否有数据
+        flash_erase_page(FLASH_SECTION_INDEX, FLASH_PAGE_INDEX);                // 擦除这一页
+
+    flash_buffer_clear();                                                       // 清空缓冲区
+
+    flash_union_buffer[0].float_type  = pid_i_L.Kp;                              // 向缓冲区第 0 个位置写入 float  数据
+    flash_union_buffer[1].float_type  = pid_i_L.Ki;
+    flash_union_buffer[2].float_type  = pid_i_R.Kp;
+    flash_union_buffer[3].float_type  = pid_i_R.Ki;
+
+    flash_write_page_from_buffer(FLASH_SECTION_INDEX, FLASH_PAGE_INDEX);        // 向指定 Flash 扇区的页码写入缓冲区数据
+    flash_buffer_clear();                                                       // 清空缓冲区
+
+    system_delay_ms(200);
+
+}
+
+void flash_read()
+{
+    flash_read_page_to_buffer(FLASH_SECTION_INDEX, FLASH_PAGE_INDEX);           // 将数据从 flash 读取到缓冲区
+
+    pid_i_L.Kp = flash_union_buffer[0].float_type;
+    pid_i_L.Ki = flash_union_buffer[1].float_type;
+    pid_i_R.Kp = flash_union_buffer[2].float_type;
+    pid_i_R.Ki = flash_union_buffer[3].float_type;
+
+    flash_buffer_clear();
+}
+ 
+
+主函数为
+
+int core0_main(void)
+{
+    clock_init();                               // 获取时钟频率<务必保留>
+    debug_init();                               // 初始化默认调试串口
+    reset_pid_increase(&pid_i_L,64,8);          //设置速度环的PI
+    reset_pid_increase(&pid_i_R,56,7.1);        //设置速度环的PI20
+
+    reset_pid_position(&pid_p_angular_velocity,40,0.0002,0.01);//设置角速度环的PID ，响应有点慢，注意转圈的bug，后期修正一下，reset_pid_position(&pid_p_angular_velocity,28,0001,5.2);
+    reset_pid_position(&pid_p_angle,4,0,0.1);     //设置方向环的PID  6.5,0,0
+
+
+    car_Init();
+    flash_read();                               //***如果有新变量必需先存一次再读取
+    Menu_Switch();
+
+    cpu_wait_event_ready();
+
+    while (TRUE)
+    {
+
+    }
+}
+————————————————
+
+                            版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+                        
+原文链接：https://blog.csdn.net/m0_65554575/article/details/132717158
