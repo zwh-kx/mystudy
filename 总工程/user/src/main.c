@@ -24,8 +24,8 @@
 #define ENCODER_2_B                 (TIM4_ENCODER_CH2_B7)
 
 #define PIT                         (TIM6_PIT )                                 // 使用的周期中断编号 如果修改 需要同步对应修改周期中断编号与 isr.c 中的调用
-#define start_column                    0	
-#define end_column                      187
+#define start_column                    1	
+#define end_column                      188
 
 float putinL;
 float putinR;
@@ -46,6 +46,7 @@ uint8 left_border;
 uint8 right_border;
 uint8 Left_Line [MT9V03X_H];
 uint8 Right_Line [MT9V03X_H];
+uint8 Mid_Line [MT9V03X_H];
 uint8 image_deal[MT9V03X_H][MT9V03X_W];
 uint8 Left_Lost_Flag[MT9V03X_H];
 uint8 Right_Lost_Flag[MT9V03X_H];
@@ -57,32 +58,36 @@ int main (void)
     debug_init();                                                               // 初始化默认 debug uart
 		menu_init();                                                                //菜单初始化
 		
-
+		mt9v03x_init();
 		
-		gpio_init(DIR_L, GPO, GPIO_HIGH, GPO_PUSH_PULL);                            // GPIO 初始化为输出 默认上拉输出高
+		gpio_init(DIR_L, GPO, GPIO_LOW, GPO_PUSH_PULL);                            // GPIO 初始化为输出 默认上拉输出高
     pwm_init(PWM_L, 17000, 0);                                                  // PWM 通道初始化频率 17KHz 占空比初始为 0
-    gpio_init(DIR_R, GPO, GPIO_HIGH, GPO_PUSH_PULL);                            // GPIO 初始化为输出 默认上拉输出高
+    gpio_init(DIR_R, GPO, GPIO_LOW, GPO_PUSH_PULL);                            // GPIO 初始化为输出 默认上拉输出高
     pwm_init(PWM_R, 17000, 0);                                                  // PWM 通道初始化频率 17KHz 占空比初始为 0
 		
     encoder_quad_init(ENCODER_1, ENCODER_1_A, ENCODER_1_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
     encoder_quad_init(ENCODER_2, ENCODER_2_A, ENCODER_2_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
 		pit_ms_init(PIT, 200);
 
-		PID_Init(&pid1,1.0f,0,0,100.0f);
-		PID_Init(&pid2,1.0f,0,0,100.0f);
-		PID_SetOutputLimits(&pid1,-500.0f,500.0f);             // 初始化pid参数
-		PID_SetOutputLimits(&pid2,-500.0f,500.0f);
+		PID_Init(&pid1,1.0f,0.5f,0.05f,80.0f);
+		PID_Init(&pid2,1.0f,0.5f,0.05f,80.0f);
+		PID_SetOutputLimits(&pid1,-120.0f,120.0f);             // 初始化pid参数
+		PID_SetOutputLimits(&pid2,-120.0f,120.0f);
+		//PID_Init_line(&pidline,1.0f,0.5f,0,94.0f);
+		//PID_SetOutputLimits_line(&pidline,-120.0f,120.0f);
+		
 		pit_ms_init(TIM8_PIT, 200);
 		
 		
     while(1)
     {
-        show_process(NULL);                                                     //菜单启动
-				pwm_set_duty(PWM_L,putoutL*10);
-				pwm_set_duty(PWM_R,putoutR*10);
+        //show_process(NULL);                                                     //菜单启动
+				pwm_set_duty(PWM_L,putoutL*12);
+				pwm_set_duty(PWM_R,putoutR*12);
 				if(mt9v03x_finish_flag)
 				{
 					image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
+					ips200_show_gray_image          (0, 188, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
 					for(W=0;W<MT9V03X_W;W++)
 					{
 						for(H=0;H<MT9V03X_H;H++)
@@ -131,10 +136,7 @@ int main (void)
     }
 		Search_Stop_Line = Longest_White_Column_Left[0];//搜索截止行选取左或者右区别不大，他们两个理论上是一样的
 		   //相关数据使用前清零
-    Longest_White_Column_Left[0] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
-    Longest_White_Column_Left[1] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
-    Longest_White_Column_Right[0] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
-    Longest_White_Column_Right[1] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
+    
     for (H = MT9V03X_H - 1; H >=MT9V03X_H-Search_Stop_Line; H--)
     {//从最下面一行，访问到有效视野行
         for (W = Longest_White_Column_Right[1]; W <= MT9V03X_W - 1 - 2; W++)
@@ -169,6 +171,14 @@ int main (void)
         }
         Left_Line [H] = left_border;       //左边线线数组
         Right_Line[H] = right_border;      //右边线线数组
+				Mid_Line[H]=(left_border+right_border)/2;
+				
+				
+				
+				Longest_White_Column_Left[0] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
+				Longest_White_Column_Left[1] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
+				Longest_White_Column_Right[0] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
+				Longest_White_Column_Right[1] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
     }
 			
 			
@@ -186,15 +196,17 @@ int main (void)
 
 void pit_handler (void)
 {
-    encoder_data_R = encoder_get_count(ENCODER_1);                              // 获取编码器计数
+    encoder_data_R = -encoder_get_count(ENCODER_1);                              // 获取编码器计数
     encoder_data_L = encoder_get_count(ENCODER_2);                              // 获取编码器计数
+		putinL=encoder_data_L/29;
+		putinR=encoder_data_R/29;
 		
-		//printf("OUTL counter \t%f .\r\n", putoutL);                 
-		//printf("OUTR counter \t%f .\r\n", putoutR);                 
-		//printf("INL counter \t%f .\r\n", putinL);                 
-		//printf("INR counter \t%f .\r\n", putinR);
-		//printf("ENCODEL counter \t%d .\r\n", encoder_data_L);                 
-		//printf("ENCODER counter \t%d .\r\n", encoder_data_R);
+		printf("OUTL counter \t%f .\r\n", putoutL);                 
+		printf("OUTR counter \t%f .\r\n", putoutR);                 
+		printf("INL counter \t%f .\r\n", putinL);                 
+		printf("INR counter \t%f .\r\n", putinR);
+		printf("ENCODEL counter \t%d .\r\n", encoder_data_L);                 
+		printf("ENCODER counter \t%d .\r\n", encoder_data_R);
 		
     encoder_clear_count(ENCODER_1);                                             // 清空编码器计数
 		encoder_clear_count(ENCODER_2);                                             // 清空编码器计数
@@ -204,5 +216,6 @@ void pit_handler1 (void)
 {
     putoutL = PID_Compute(&pid1, putinL);
 		putoutR = PID_Compute(&pid2, putinR);
-		putoutline = PID_Compute_line(&pidline, putinline);
+		//putinline=(Mid_Line[50]+Mid_Line[51]+Mid_Line[52]+Mid_Line[53])/4;
+		//putoutline = PID_Compute_line(&pidline, putinline);
 }
