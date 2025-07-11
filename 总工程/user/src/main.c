@@ -32,6 +32,7 @@ float putoutL;
 float putoutR;
 float turnL;
 float turnR;
+float k=0;
 int16 encoder_data_L = 0;
 int16 encoder_data_R = 0;
 uint8    W;
@@ -65,7 +66,8 @@ uint8 Right_Up_Find;
 int i,t;
 uint8 Both_Lost_Time;
 uint8 down_search_start;
-
+int continuity_change_flag_R;
+int continuity_change_flag_L;
 
 //元素识别函数
 /*-------------------------------------------------------------------------------------------------------------------
@@ -79,7 +81,6 @@ uint8 down_search_start;
 -------------------------------------------------------------------------------------------------------------------*/
 void Find_Down_Point(int start,int end)
 {
-		
     Right_Down_Find=0;
     Left_Down_Find=0;
     if(start<end)
@@ -100,9 +101,9 @@ void Find_Down_Point(int start,int end)
            abs(Left_Line[i]-Left_Line[i+1])<=5&&//角点的阈值可以更改
            abs(Left_Line[i+1]-Left_Line[i+2])<=5&&
            abs(Left_Line[i+2]-Left_Line[i+3])<=5&&
-              (Left_Line[i]-Left_Line[i-2])>=8&&
-              (Left_Line[i]-Left_Line[i-3])>=15&&
-              (Left_Line[i]-Left_Line[i-4])>=15)
+              (Left_Line[i]-Left_Line[i-2])>=5&&
+              (Left_Line[i]-Left_Line[i-3])>=8&&
+              (Left_Line[i]-Left_Line[i-4])>=8)
         {
             Left_Down_Find=i;//获取行数即可
         }
@@ -110,9 +111,9 @@ void Find_Down_Point(int start,int end)
            abs(Right_Line[i]-Right_Line[i+1])<=5&&//角点的阈值可以更改
            abs(Right_Line[i+1]-Right_Line[i+2])<=5&&
            abs(Right_Line[i+2]-Right_Line[i+3])<=5&&
-              (Right_Line[i]-Right_Line[i-2])<=-8&&
-              (Right_Line[i]-Right_Line[i-3])<=-15&&
-              (Right_Line[i]-Right_Line[i-4])<=-15)
+              (Right_Line[i]-Right_Line[i-2])<=-5&&
+              (Right_Line[i]-Right_Line[i-3])<=-8&&
+              (Right_Line[i]-Right_Line[i-4])<=-8)
         {
             Right_Down_Find=i;
         }
@@ -134,7 +135,6 @@ void Find_Down_Point(int start,int end)
 -------------------------------------------------------------------------------------------------------------------*/
 void Find_Up_Point(int start,int end)
 {
-    int i,t;
     Left_Up_Find=0;
     Right_Up_Find=0;
     if(start<end)
@@ -155,9 +155,9 @@ void Find_Up_Point(int start,int end)
            abs(Left_Line[i]-Left_Line[i-1])<=5&&
            abs(Left_Line[i-1]-Left_Line[i-2])<=5&&
            abs(Left_Line[i-2]-Left_Line[i-3])<=5&&
-              (Left_Line[i]-Left_Line[i+2])>=8&&
-              (Left_Line[i]-Left_Line[i+3])>=15&&
-              (Left_Line[i]-Left_Line[i+4])>=15)
+              (Left_Line[i]-Left_Line[i+2])>=6&&
+              (Left_Line[i]-Left_Line[i+3])>=9&&
+              (Left_Line[i]-Left_Line[i+4])>=9)
         {
             Left_Up_Find=i;//获取行数即可
         }
@@ -165,9 +165,9 @@ void Find_Up_Point(int start,int end)
            abs(Right_Line[i]-Right_Line[i-1])<=5&&//下面两行位置差不多
            abs(Right_Line[i-1]-Right_Line[i-2])<=5&&
            abs(Right_Line[i-2]-Right_Line[i-3])<=5&&
-              (Right_Line[i]-Right_Line[i+2])<=-8&&
-              (Right_Line[i]-Right_Line[i+3])<=-15&&
-              (Right_Line[i]-Right_Line[i+4])<=-15)
+              (Right_Line[i]-Right_Line[i+2])<=-6&&
+              (Right_Line[i]-Right_Line[i+3])<=-9&&
+              (Right_Line[i]-Right_Line[i+4])<=-9)
         {
             Right_Up_Find=i;//获取行数即可
         }
@@ -185,7 +185,7 @@ void Find_Up_Point(int start,int end)
 
 
 /*-------------------------------------------------------------------------------------------------------------------
-  @brief     左补线
+  @brief     左右补线
   @param     补线的起点，终点
   @return    null
   Sample     Left_Add_Line(int x1,int y1,int x2,int y2);
@@ -193,7 +193,7 @@ void Find_Up_Point(int start,int end)
 -------------------------------------------------------------------------------------------------------------------*/
 void Left_Add_Line(int x1,int y1,int x2,int y2)//左补线,补的是边界
 {
-    int i,max,a1,a2;
+    int max,a1,a2;
     int hx;
     if(x1>=MT9V03X_W-1)//起始点位置校正，排除数组越界的可能
        x1=MT9V03X_W-1;
@@ -213,15 +213,15 @@ void Left_Add_Line(int x1,int y1,int x2,int y2)//左补线,补的是边界
              y2=0;
     a1=y1;
     a2=y2;
- 
-//这里有bug，下方循环++循环，只进行y的互换，但是没有进行x的互换
-//建议进行判断，根据a1和a2的大小关系，决定++或者--访问
-//这里修改各位自行操作
-    if(a1>a2)//坐标互换，这里建议修改，x坐标，y坐标一起交换，单纯换y坐标可能会导致bug
+
+    if(a1>a2)
     {
         max=a1;
         a1=a2;
         a2=max;
+				max=x1;
+				x1=x2;
+				x2=max;
     }
     for(i=a1;i<=a2;i++)//根据斜率补线即可
     {
@@ -234,14 +234,50 @@ void Left_Add_Line(int x1,int y1,int x2,int y2)//左补线,补的是边界
     }
 }
 
-//右补线
-void Right_Add_Line(int x1,int y1,int x2,int y2)
+void Right_Add_Line(int x3,int y3,int x4,int y4)
 {
-
+		int MAX,a3,a4;
+    int Hx;
+    if(x3>=MT9V03X_W-1)//起始点位置校正，排除数组越界的可能
+       x3=MT9V03X_W-1;
+    else if(x3<=0)
+        x3=0;
+     if(y3>=MT9V03X_H-1)
+        y3=MT9V03X_H-1;
+     else if(y3<=0)
+        y3=0;
+     if(x4>=MT9V03X_W-1)
+        x4=MT9V03X_W-1;
+     else if(x4<=0)
+             x4=0;
+     if(y4>=MT9V03X_H-1)
+        y4=MT9V03X_H-1;
+     else if(y4<=0)
+             y4=0;
+    a3=y3;
+    a4=y4;
+		if(a3>a4)
+    {
+        MAX=a3;
+        a3=a4;
+        a4=MAX;
+				MAX=x3;
+				x3=x4;
+				x4=MAX;
+    }
+		for(i=a3;i<=a4;i++)//根据斜率补线即可
+    {
+        Hx=(i-y3)*(x4-x3)/(y4-y3)+x3;
+        if(Hx>=MT9V03X_W)
+            Hx=MT9V03X_W;
+        else if(Hx<=0)
+            Hx=0;
+        Right_Line[i]=Hx;
+    }
 }
 
 /*-------------------------------------------------------------------------------------------------------------------
-  @brief     右左边界延长
+  @brief     左右边界延长
   @param     延长起始行数，延长到某行
   @return    null
   Sample     Lengthen_Right_Boundry(int start,int end)；
@@ -249,8 +285,6 @@ void Right_Add_Line(int x1,int y1,int x2,int y2)
 -------------------------------------------------------------------------------------------------------------------*/
 void Lengthen_Right_Boundry(int start,int end)
 {
-    int i,t;
-    float k=0;
     if(start>=MT9V03X_H-1)//起始点位置校正，排除数组越界的可能
         start=MT9V03X_H-1;
     else if(start<=0)
@@ -302,12 +336,58 @@ void Lengthen_Right_Boundry(int start,int end)
 }
 
 
-		void Lengthen_Left_Boundry(int start,int end)
+void Lengthen_Left_Boundry(int start,int end)
 {
-
+		if(start>=MT9V03X_H-1)//起始点位置校正，排除数组越界的可能
+        start=MT9V03X_H-1;
+    else if(start<=0)
+        start=0;
+    if(end>=MT9V03X_H-1)
+        end=MT9V03X_H-1;
+    else if(end<=0)
+        end=0;
+		 if(start<=5 && start <= end)//因为需要在开始点向上找3个点，对于起始点过于靠上，不能做延长，只能直接连线
+    {
+        Left_Add_Line(Left_Line[start],start,Left_Line[end],end);
+    }
+		else
+    {
+        k=(float)(Left_Line[start]-Left_Line[start-4])/5.0;//这里的k是1/斜率
+        if(start<=end)
+        {
+            for(i=start;i<=end;i++)
+            {
+                Left_Line[i]=(int)(i-start)*k+Left_Line[start];//(x=(y-y1)*k+x1),点斜式变形
+                if(Left_Line[i]>=MT9V03X_W-1)
+                {
+                    Left_Line[i]=MT9V03X_W-1;
+                }
+                else if(Left_Line[i]<=0)
+                {
+                    Left_Line[i]=0;
+                }
+            }
+        }
+        else
+        {
+            for(i=end;i<=start;i++)
+            {
+                Left_Line[i]=(int)(i-start)*k+Left_Line[start];//(x=(y-y1)*k+x1),点斜式变形
+                if(Left_Line[i]>=MT9V03X_W-1)
+                {
+                    Left_Line[i]=MT9V03X_W-1;
+                }
+                else if(Left_Line[i]<=0)
+                {
+                    Left_Line[i]=0;
+                }
+            }
+        }
+        
+    }
 }
 
-
+//十字检查
 
 void Cross_Detect()
 {
@@ -318,7 +398,7 @@ void Cross_Detect()
 		Both_Lost_Time=Left_Lost_Time>=Right_Lost_Time?Right_Lost_Time:Left_Lost_Time;
         if(Both_Lost_Time>=10)//十字必定有双边丢线，在有双边丢线的情况下再开始找角点
         {
-            Find_Up_Point( MT9V03X_H-1, 0 );
+            Find_Up_Point( MT9V03X_H-35, 0 );
             if(Left_Up_Find==0&&Right_Up_Find==0)//只要没有同时找到两个上点，直接结束
             {
                 return;
@@ -362,20 +442,154 @@ void Cross_Detect()
         {
             Cross_Flag=0;
         }
-    //角点相关变量，debug使用
-    //ips200_showuint8(0,12,Cross_Flag);
-//    ips200_showuint8(0,13,Island_State);
-//    ips200_showuint8(50,12,Left_Up_Find);
-//    ips200_showuint8(100,12,Right_Up_Find);
-//    ips200_showuint8(50,13,Left_Down_Find);
-//    ips200_showuint8(100,13,Right_Down_Find);
+}		
+
+
+//以下部分用于环岛
+
+/*-------------------------------------------------------------------------------------------------------------------
+  @brief     单调性突变检测
+  @param     起始点，终止行
+  @return    点所在的行数，找不到返回0
+  Sample     Find_Right_Up_Point(int start,int end);
+  @note      前5后5它最大（最小），那他就是角点
+-------------------------------------------------------------------------------------------------------------------*/
+int Monotonicity_Change_Right(int start,int end)//单调性改变，返回值是单调性改变点所在的行数
+{
+    int monotonicity_change_line=0;
+    if(Right_Lost_Time>=0.9*MT9V03X_H)//大部分都丢线，没有单调性判断的意义
+        return monotonicity_change_line;
+    if(start>=MT9V03X_H-1-5)//数组越界保护
+        start=MT9V03X_H-1-5;
+     if(end<=5)
+        end=5;
+    if(start<=end)
+        return monotonicity_change_line;
+    for(i=start;i>=end;i--)//会读取前5后5数据，所以前面对输入范围有要求
+    {
+        if(Right_Line[i]==Right_Line[i+5]&&Right_Line[i]==Right_Line[i-5]&&
+        Right_Line[i]==Right_Line[i+4]&&Right_Line[i]==Right_Line[i-4]&&
+        Right_Line[i]==Right_Line[i+3]&&Right_Line[i]==Right_Line[i-3]&&
+        Right_Line[i]==Right_Line[i+2]&&Right_Line[i]==Right_Line[i-2]&&
+        Right_Line[i]==Right_Line[i+1]&&Right_Line[i]==Right_Line[i-1])
+        {//一堆数据一样，显然不能作为单调转折点
+            continue;
+        }
+        else if(Right_Line[i] <Right_Line[i+5]&&Right_Line[i] <Right_Line[i-5]&&
+        Right_Line[i] <Right_Line[i+4]&&Right_Line[i] <Right_Line[i-4]&&
+        Right_Line[i]<=Right_Line[i+3]&&Right_Line[i]<=Right_Line[i-3]&&
+        Right_Line[i]<=Right_Line[i+2]&&Right_Line[i]<=Right_Line[i-2]&&
+        Right_Line[i]<=Right_Line[i+1]&&Right_Line[i]<=Right_Line[i-1])
+        {//就很暴力，这个数据是在前5，后5中最大的，那就是单调突变点
+            monotonicity_change_line=i;
+            break;
+        }
+    }
+    return monotonicity_change_line;
 }
 
+/*-------------------------------------------------------------------------------------------------------------------
+  @brief     右下角点检测
+  @param     起始点，终止点
+  @return    返回角点所在的行数，找不到返回0
+  Sample     Find_Right_Down_Point(int start,int end);
+  @note      角点检测阈值可根据实际值更改
+-------------------------------------------------------------------------------------------------------------------*/
+int Find_Right_Down_Point(int start,int end)//找四个角点，返回值是角点所在的行数
+{
+    int i,t;
+    int right_down_line=0;
+    if(Right_Lost_Time>=0.9*MT9V03X_H)//大部分都丢线，没有拐点判断的意义
+        return right_down_line;
+    if(start<end)
+    {
+        t=start;
+        start=end;
+        end=t;
+    }
+    if(start>=MT9V03X_H-1-5)//下面5行数据不稳定，不能作为边界点来判断，舍弃
+        start=MT9V03X_H-1-5;
+    if(end<=MT9V03X_H-Search_Stop_Line)
+        end=MT9V03X_H-Search_Stop_Line;
+    if(end<=5)
+       end=5;
+    for(i=start;i>=end;i--)
+    {
+        if(right_down_line==0&&//只找第一个符合条件的点
+           abs(Right_Line[i]-Right_Line[i+1])<=5&&//角点的阈值可以更改
+           abs(Right_Line[i+1]-Right_Line[i+2])<=5&&  
+           abs(Right_Line[i+2]-Right_Line[i+3])<=5&&
+              (Right_Line[i]-Right_Line[i-2])<=-5&&
+              (Right_Line[i]-Right_Line[i-3])<=-10&&
+              (Right_Line[i]-Right_Line[i-4])<=-10)
+        {
+            right_down_line=i;//获取行数即可
+            break;
+        }
+    }
+    return right_down_line;
+}
 
+/*-------------------------------------------------------------------------------------------------------------------
+  @brief     左右赛道连续性检测
+  @param     起始点，终止点
+  @return    连续返回0，不连续返回断线出行数
+  Sample     continuity_change_flag=Continuity_Change_Right(int start,int end)
+  @note      连续性的阈值设置为5，可更改
+-------------------------------------------------------------------------------------------------------------------*/
+int Continuity_Change_Right(int start,int end)
+{
+    continuity_change_flag_R=0;
+    if(Right_Lost_Time>=0.9*MT9V03X_H)//大部分都丢线，没必要判断了
+       return 1;
+    if(start>=MT9V03X_H-5)//数组越界保护
+        start=MT9V03X_H-5;
+    if(end<=5)
+       end=5;
+    if(start<end)//都是从下往上计算的，反了就互换一下
+    {
+       t=start;
+       start=end;
+       end=t;
+    }
+ 
+    for(i=start;i>=end;i--)
+    {
+        if(abs(Right_Line[i]-Right_Line[i-1])>=5)//连续性阈值是5，可更改
+       {
+            continuity_change_flag_R=i;
+            break;
+       }
+    }
+    return continuity_change_flag_R;
+}
 
-
-
-
+int Continuity_Change_Left(int start,int end)
+{
+    continuity_change_flag_L=0;
+    if(Left_Lost_Time>=0.9*MT9V03X_H)//大部分都丢线，没必要判断了
+       return 1;
+    if(start>=MT9V03X_H-5)//数组越界保护
+        start=MT9V03X_H-5;
+    if(end<=5)
+       end=5;
+    if(start<end)//都是从下往上计算的，反了就互换一下
+    {
+       t=start;
+       start=end;
+       end=t;
+    }
+ 
+    for(i=start;i>=end;i--)
+    {
+        if(abs(Left_Line[i]-Left_Line[i-1])>=5)//连续性阈值是5，可更改
+       {
+            continuity_change_flag_L=i;
+            break;
+       }
+    }
+    return continuity_change_flag_L;
+}
 
 
 int main (void)
@@ -399,24 +613,51 @@ int main (void)
 		PID_Init(&pid2,0.12f,0.394f,0.14f,3200.0f);
 		PID_SetOutputLimits(&pid1,0.0f,2600.0f);             // 初始化pid参数
 		PID_SetOutputLimits(&pid2,0.0f,2600.0f);
-		PID_Init_line(&pidline,3.0f,0,0.0f,94.0f);
-		PID_SetOutputLimits_line(&pidline,-2400.0f,2400.0f);
+		PID_Init_line(&pidline,11.0f,0,3.0f,94.0f);
+		PID_SetOutputLimits_line(&pidline,-1200.0f,1200.0f);
 		
 		pit_ms_init(TIM8_PIT, 200);
 		
 		
     while(1)
     {
-        //show_process(NULL);                                                     //菜单启动
-				pwm_set_duty(PWM_L,putoutL+turnL*6);
-				pwm_set_duty(PWM_R,putoutR+turnR*6);
+        //show_process(NULL);				//菜单启动
+				if(putoutL+turnL*3<0)
+				{
+				gpio_set_level(DIR_L,GPIO_HIGH);
+				pwm_set_duty(PWM_L,putoutL+turnL*3);
+
+				}
+				
+				if(putoutL+turnL*3>=0)
+				{
+				gpio_set_level(DIR_L,GPIO_LOW);
+				pwm_set_duty(PWM_L,-(putoutL+turnL*3));
+
+				}
+				
+				if(putoutR+turnR*3<0)
+				{
+				gpio_set_level(DIR_R,GPIO_HIGH);
+				pwm_set_duty(PWM_R,putoutR+turnR*3);
+
+				}
+				
+				if(putoutR+turnR*3>=0)
+				{
+				gpio_set_level(DIR_R,GPIO_LOW);
+				pwm_set_duty(PWM_R,-(putoutR+turnR*3));
+
+				}
+				
 				//ips200_show_float(0,180,putoutline,5,3);
-				ips200_show_float(0,200,putoutL,5,3);
-				ips200_show_float(0,220,putoutR,5,3);
-				ips200_show_float(0,240,turnL,5,3);
-				ips200_show_float(0,260,turnR,5,3);
-				ips200_show_float(0,280,encoder_data_L,5,3);
-				ips200_show_float(0,300,encoder_data_R,5,3);
+				//ips200_show_float(0,200,putoutL,5,3);
+				//ips200_show_float(0,220,putoutR,5,3);
+				//ips200_show_float(0,240,turnL,5,3);
+				//ips200_show_float(0,260,turnR,5,3);
+				//ips200_show_float(0,280,encoder_data_L,5,3);
+				//ips200_show_float(0,300,encoder_data_R,5,3);
+				ips200_show_int (0, 160,continuity_change_flag_R,3);
 				if(mt9v03x_finish_flag)
 				{
 						image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
@@ -442,7 +683,7 @@ int main (void)
 							//统计白线长度
 		for (W =1; W<=187; W++)
 		{
-				for (H = MT9V03X_H - 1; H >= 0; H--)
+				for (H = MT9V03X_H - 1; H >= 20; H--)
 				{
 						if(image_deal[H][W] == 0)
 						{break;}
@@ -507,9 +748,17 @@ int main (void)
             }
         }
         Left_Line [H] = left_border;       //左边线线数组
-				Mid_Line[H]=(left_border+right_border)/2;
+				
 				
     }
+		
+		//Continuity_Change_Right(0,120);
+		
+		Cross_Detect();
+		for(H=0;H<=100;H++)
+		{
+		Mid_Line[H]=(Left_Line [H]+Right_Line[H])/2;
+		}
 		
 		//边中线显示
 			for(T=0;T<=100;T++)
@@ -569,21 +818,21 @@ void pit_handler (void)
 void pit_handler1 (void)
 {
     
-		putinline=(Mid_Line[50]+Mid_Line[51]+Mid_Line[52]+Mid_Line[53])/4;
+		putinline=(Mid_Line[48]+Mid_Line[49]+Mid_Line[50]+Mid_Line[51])/4;
 		putoutline = PID_Compute_line(&pidline, putinline);
 		if(putinline>=94)                                                           //右转
 		{
-				turnL=-putoutline/2;
+				turnL=-putoutline;
 				turnR=putoutline;
 				
 		}
 		if(putinline<94)                                                           //左转
 		{
 				turnL=-putoutline;
-				turnR=putoutline/2;
+				turnR=putoutline;
 		}
-		PID_Init(&pid1,0.12f,0.36f,0.12f,2600.0f+turnL*4);
-		PID_Init(&pid2,0.12f,0.394f,0.14f,2600.0f+turnR*4);
+		PID_Init(&pid1,0.12f,0.36f,0.12f,3700.0f);
+		PID_Init(&pid2,0.12f,0.394f,0.14f,3700.0f);
 		PID_SetOutputLimits(&pid1,0.0f,1800.0f);             // 初始化pid参数
 		PID_SetOutputLimits(&pid2,0.0f,1800.0f);
 		putoutL = PID_Compute(&pid1, putinL);
