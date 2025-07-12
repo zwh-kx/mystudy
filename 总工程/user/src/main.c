@@ -155,9 +155,9 @@ void Find_Up_Point(int start,int end)
            abs(Left_Line[i]-Left_Line[i-1])<=5&&
            abs(Left_Line[i-1]-Left_Line[i-2])<=5&&
            abs(Left_Line[i-2]-Left_Line[i-3])<=5&&
-              (Left_Line[i]-Left_Line[i+2])>=6&&
-              (Left_Line[i]-Left_Line[i+3])>=9&&
-              (Left_Line[i]-Left_Line[i+4])>=9)
+              (Left_Line[i]-Left_Line[i+2])>=5&&
+              (Left_Line[i]-Left_Line[i+3])>=8&&
+              (Left_Line[i]-Left_Line[i+4])>=8)
         {
             Left_Up_Find=i;//获取行数即可
         }
@@ -165,9 +165,9 @@ void Find_Up_Point(int start,int end)
            abs(Right_Line[i]-Right_Line[i-1])<=5&&//下面两行位置差不多
            abs(Right_Line[i-1]-Right_Line[i-2])<=5&&
            abs(Right_Line[i-2]-Right_Line[i-3])<=5&&
-              (Right_Line[i]-Right_Line[i+2])<=-6&&
-              (Right_Line[i]-Right_Line[i+3])<=-9&&
-              (Right_Line[i]-Right_Line[i+4])<=-9)
+              (Right_Line[i]-Right_Line[i+2])<=-5&&
+              (Right_Line[i]-Right_Line[i+3])<=-8&&
+              (Right_Line[i]-Right_Line[i+4])<=-8)
         {
             Right_Up_Find=i;//获取行数即可
         }
@@ -607,16 +607,16 @@ int main (void)
 		
     encoder_quad_init(ENCODER_1, ENCODER_1_A, ENCODER_1_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
     encoder_quad_init(ENCODER_2, ENCODER_2_A, ENCODER_2_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
-		pit_ms_init(PIT, 200);
+		pit_ms_init(PIT, 50);
 
-		PID_Init(&pid1,0.12f,0.36f,0.12f,3200.0f);
-		PID_Init(&pid2,0.12f,0.394f,0.14f,3200.0f);
-		PID_SetOutputLimits(&pid1,0.0f,2600.0f);             // 初始化pid参数
-		PID_SetOutputLimits(&pid2,0.0f,2600.0f);
-		PID_Init_line(&pidline,11.0f,0,3.0f,94.0f);
+		//PID_Init(&pid1,0.12f,0.36f,0.12f,3200.0f);
+		//PID_Init(&pid2,0.12f,0.394f,0.14f,3200.0f);
+		//PID_SetOutputLimits(&pid1,-2600.0f,2600.0f);             // 初始化pid参数
+		//PID_SetOutputLimits(&pid2,-2600.0f,2600.0f);
+		PID_Init_line(&pidline,13.5f,0,0.0f,94.0f);
 		PID_SetOutputLimits_line(&pidline,-1200.0f,1200.0f);
 		
-		pit_ms_init(TIM8_PIT, 200);
+		pit_ms_init(TIM8_PIT, 50);
 		
 		
     while(1)
@@ -657,12 +657,13 @@ int main (void)
 				//ips200_show_float(0,260,turnR,5,3);
 				//ips200_show_float(0,280,encoder_data_L,5,3);
 				//ips200_show_float(0,300,encoder_data_R,5,3);
-				ips200_show_int (0, 160,continuity_change_flag_R,3);
+				//ips200_show_int (0, 160,continuity_change_flag_R,3);
 				if(mt9v03x_finish_flag)
 				{
-						image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
+					image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
 
 					ips200_show_gray_image          (0, 0, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
+					//ips200_displayimage03x(mt9v03x_image[0], 188, 120);
 					for(H=0;H<MT9V03X_H;H++)
 					{
 						for(W=0;W<MT9V03X_W;W++)
@@ -793,7 +794,11 @@ int main (void)
 void pit_handler (void)
 {
     encoder_data_R = -encoder_get_count(ENCODER_1);                              // 获取编码器计数
-    encoder_data_L = encoder_get_count(ENCODER_2);                              // 获取编码器计数
+    encoder_data_L = encoder_get_count(ENCODER_2);
+		
+		
+		
+			// 获取编码器计数
 		putinL=encoder_data_L;
 		putinR=encoder_data_R;
 		
@@ -807,8 +812,12 @@ void pit_handler (void)
 		
 		//printf("ENCODER  \t%f.\r\n", putinline);
 
-		printf("turnR  \t%f .\r\n", turnR);
-		printf("turnL  \t%f .\r\n", turnL);
+		//printf("turnR  \t%f .\r\n", turnR);
+		//printf("turnL  \t%f .\r\n", turnL);
+		
+		printf("%d,",encoder_data_R);
+		printf("%d,",encoder_data_L);	
+		printf("%d\n",1500);
 
 
     encoder_clear_count(ENCODER_1);                                             // 清空编码器计数
@@ -831,10 +840,10 @@ void pit_handler1 (void)
 				turnL=-putoutline;
 				turnR=putoutline;
 		}
-		PID_Init(&pid1,0.12f,0.36f,0.12f,3700.0f);
-		PID_Init(&pid2,0.12f,0.394f,0.14f,3700.0f);
-		PID_SetOutputLimits(&pid1,0.0f,1800.0f);             // 初始化pid参数
-		PID_SetOutputLimits(&pid2,0.0f,1800.0f);
+		PID_Init(&pid1,2.0f,0.8f,0.0f,1000.0f);
+		PID_Init(&pid2,2.0f,0.8f,0.0f,1000.0f);
+		PID_SetOutputLimits(&pid1,-3000.0f,3000.0f);             // 初始化pid参数
+		PID_SetOutputLimits(&pid2,-3000.0f,3000.0f);
 		putoutL = PID_Compute(&pid1, putinL);
 		putoutR = PID_Compute(&pid2, putinR);
 }
