@@ -41,8 +41,10 @@ uint8    H;
 uint8    T;
 uint8    FLAG;
 uint8    FLAG2;
+uint8    FLAG3;
 
 
+uint8 COUNT;
 uint8 count;
 
 float putoutline;
@@ -603,6 +605,7 @@ int Continuity_Change_Left(int start,int end)
 
 int main (void)
 {
+		COUNT=0;
 		FLAG2=0;
 		FLAG=0;                                                                     //停车标志位
 		clock_init(SYSTEM_CLOCK_120M);                                              // 初始化芯片时钟 工作频率为 120MHz
@@ -624,7 +627,7 @@ int main (void)
 		PID_Init(&pid2,2.0f,0.8f,0.0f,750.0f);
 		PID_SetOutputLimits(&pid1,-3000.0f,3000.0f);             // 初始化pid参数
 		PID_SetOutputLimits(&pid2,-3000.0f,3000.0f);
-		PID_Init_line(&pidline,14.0f,0,0.0f,94.0f);
+		PID_Init_line(&pidline,13.5f,0,0.0f,94.0f);
 		PID_SetOutputLimits_line(&pidline,-1200.0f,1200.0f);
 		
 		pit_ms_init(TIM8_PIT, 50);
@@ -674,7 +677,8 @@ int main (void)
 				//ips200_show_int (0, 180,continuity_change_flag_L,3);
 				//ips200_show_int (0, 200,monotonicity_change_line,3);
 				//ips200_show_int (0, 220,right_down_line,3);
-				//ips200_show_int (0, 220,FLAG2,3);
+				ips200_show_int (0, 220,FLAG2,3);
+				ips200_show_int (0, 240,COUNT,3);
 				//ips200_show_int (0, 200,FLAG,3);
 				
 				if(mt9v03x_finish_flag)
@@ -730,7 +734,6 @@ int main (void)
         }
     }
 		Search_Stop_Line = Longest_White_Column_Right[0];//搜索截止行选取左或者右区别不大，他们两个理论上是一样的
-		   //相关数据使用前清零
     
     for (H = MT9V03X_H - 1; H >=MT9V03X_H-Search_Stop_Line; H--)
     {//从最下面一行，访问到有效视野行
@@ -772,23 +775,37 @@ int main (void)
 				
     }
 
+		Cross_Detect();
 		
-		
-		if(Find_Right_Down_Point(120,0))
+		if(Find_Right_Down_Point(120,70))
 		{
-				
-				if(Monotonicity_Change_Right(120,0))
+				if(Monotonicity_Change_Right(100,20))
 				{
-						
-						Right_Add_Line(Right_Line[Monotonicity_Change_Right(120,0)],Monotonicity_Change_Right(120,0),Right_Line[Find_Right_Down_Point(120,0)],Find_Right_Down_Point(120,0));
-						//FLAG2=10;
+						if(Left_Lost_Time<=5)
+						{
+							if(Right_Lost_Time>=30)
+							{
+								//FLAG3=1;
+								FLAG2=40;
+								COUNT++;
+							}
+						}
 				}
 		}
 		
+
+
 		
-
-
-		Cross_Detect();
+		
+		if(FLAG2>=15)
+		{
+				Right_Add_Line(135,20,187,119);
+				for(H=0;H<=100;H++)
+			{
+				Mid_Line[H]=(Left_Line [H]+Right_Line[H])/2;
+			}
+		}
+		
 		if(FLAG2==0)
 		{
 			for(H=0;H<=100;H++)
@@ -796,15 +813,15 @@ int main (void)
 				Mid_Line[H]=(Left_Line [H]+Right_Line[H])/2;
 			}
 		}
-		//if(FLAG2>0)
-		//{
-			//for(H=0;H<=100;H++)
-			//{
-				//Mid_Line[H]=(Left_Line [H]+Right_Line[H]+40)/2;
-			//}
-			//FLAG2--;
-		//}
-
+		
+		if(FLAG2>0&&FLAG2<15)
+		{	
+			for(H=0;H<=100;H++)
+			{
+				Mid_Line[H]=(Left_Line [H]+Right_Line[H]+80)/2;
+			}
+		}
+		
 		count=0;
 		t=0;
 		//斑马线
@@ -877,11 +894,16 @@ void pit_handler (void)
 		//printf("turnR  \t%f .\r\n", turnR);
 		//printf("turnL  \t%f .\r\n", turnL);
 		
-		printf("%d,",encoder_data_R);
-		printf("%d,",encoder_data_L);	
-		printf("%d\n",900);
+		//printf("%d,",encoder_data_R);
+		//printf("%d,",encoder_data_L);	
+		//printf("%d\n",900);
 
 
+		if(FLAG2>0)
+		{
+				FLAG2--;
+		}
+		
     encoder_clear_count(ENCODER_1);                                             // 清空编码器计数
 		encoder_clear_count(ENCODER_2);                                             // 清空编码器计数
 }
@@ -904,8 +926,8 @@ void pit_handler1 (void)
 		}
 		
 		
-		PID_Init(&pid1,2.0f,0.8f,0.0f,1000.0f);
-		PID_Init(&pid2,2.0f,0.8f,0.0f,1000.0f);
+		PID_Init(&pid1,2.0f,0.8f,0.0f,900.0f);
+		PID_Init(&pid2,2.0f,0.8f,0.0f,900.0f);
 		PID_SetOutputLimits(&pid1,-3000.0f,3000.0f);             // 初始化pid参数
 		PID_SetOutputLimits(&pid2,-3000.0f,3000.0f);
 		putoutL = PID_Compute(&pid1, putinL);
