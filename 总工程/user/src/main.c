@@ -9,11 +9,11 @@
 #include "findline.h"
 
 
-#define DIR_R               (A0 )
-#define PWM_R               (TIM5_PWM_CH2_A1)
+#define DIR_R               (A2 )
+#define PWM_R               (TIM5_PWM_CH4_A3)
 
-#define DIR_L               (A2 )
-#define PWM_L               (TIM5_PWM_CH4_A3)
+#define DIR_L               (A0 )
+#define PWM_L               (TIM5_PWM_CH2_A1)
 
 #define ENCODER_1                   (TIM3_ENCODER)
 #define ENCODER_1_A                 (TIM3_ENCODER_CH1_B4)
@@ -26,6 +26,7 @@
 #define PIT                         (TIM6_PIT )                                 // 使用的周期中断编号 如果修改 需要同步对应修改周期中断编号与 isr.c 中的调用
 
 
+float target;
 float putinL;
 float putinR;
 float putoutL;
@@ -38,6 +39,11 @@ int16 encoder_data_R = 0;
 uint8    W;
 uint8    H;
 uint8    T;
+uint8    FLAG;
+uint8    FLAG2;
+
+
+uint8 count;
 
 float putoutline;
 float putinline;
@@ -68,6 +74,8 @@ uint8 Both_Lost_Time;
 uint8 down_search_start;
 int continuity_change_flag_R;
 int continuity_change_flag_L;
+int monotonicity_change_line;
+int right_down_line;
 
 //元素识别函数
 /*-------------------------------------------------------------------------------------------------------------------
@@ -456,7 +464,7 @@ void Cross_Detect()
 -------------------------------------------------------------------------------------------------------------------*/
 int Monotonicity_Change_Right(int start,int end)//单调性改变，返回值是单调性改变点所在的行数
 {
-    int monotonicity_change_line=0;
+		monotonicity_change_line=0;
     if(Right_Lost_Time>=0.9*MT9V03X_H)//大部分都丢线，没有单调性判断的意义
         return monotonicity_change_line;
     if(start>=MT9V03X_H-1-5)//数组越界保护
@@ -479,7 +487,8 @@ int Monotonicity_Change_Right(int start,int end)//单调性改变，返回值是
         Right_Line[i] <Right_Line[i+4]&&Right_Line[i] <Right_Line[i-4]&&
         Right_Line[i]<=Right_Line[i+3]&&Right_Line[i]<=Right_Line[i-3]&&
         Right_Line[i]<=Right_Line[i+2]&&Right_Line[i]<=Right_Line[i-2]&&
-        Right_Line[i]<=Right_Line[i+1]&&Right_Line[i]<=Right_Line[i-1])
+        Right_Line[i]<=Right_Line[i+1]&&Right_Line[i]<=Right_Line[i-1]&&
+				Right_Line[i]-Right_Line[i-4]>=-20)
         {//就很暴力，这个数据是在前5，后5中最大的，那就是单调突变点
             monotonicity_change_line=i;
             break;
@@ -497,8 +506,7 @@ int Monotonicity_Change_Right(int start,int end)//单调性改变，返回值是
 -------------------------------------------------------------------------------------------------------------------*/
 int Find_Right_Down_Point(int start,int end)//找四个角点，返回值是角点所在的行数
 {
-    int i,t;
-    int right_down_line=0;
+    right_down_line=0;
     if(Right_Lost_Time>=0.9*MT9V03X_H)//大部分都丢线，没有拐点判断的意义
         return right_down_line;
     if(start<end)
@@ -519,9 +527,9 @@ int Find_Right_Down_Point(int start,int end)//找四个角点，返回值是角�
            abs(Right_Line[i]-Right_Line[i+1])<=5&&//角点的阈值可以更改
            abs(Right_Line[i+1]-Right_Line[i+2])<=5&&  
            abs(Right_Line[i+2]-Right_Line[i+3])<=5&&
-              (Right_Line[i]-Right_Line[i-2])<=-5&&
-              (Right_Line[i]-Right_Line[i-3])<=-10&&
-              (Right_Line[i]-Right_Line[i-4])<=-10)
+              (Right_Line[i]-Right_Line[i-2])<=-4&&
+              (Right_Line[i]-Right_Line[i-3])<=-8&&
+              (Right_Line[i]-Right_Line[i-4])<=-8)
         {
             right_down_line=i;//获取行数即可
             break;
@@ -539,6 +547,7 @@ int Find_Right_Down_Point(int start,int end)//找四个角点，返回值是角�
 -------------------------------------------------------------------------------------------------------------------*/
 int Continuity_Change_Right(int start,int end)
 {
+		
     continuity_change_flag_R=0;
     if(Right_Lost_Time>=0.9*MT9V03X_H)//大部分都丢线，没必要判断了
        return 1;
@@ -594,6 +603,8 @@ int Continuity_Change_Left(int start,int end)
 
 int main (void)
 {
+		FLAG2=0;
+		FLAG=0;                                                                     //停车标志位
 		clock_init(SYSTEM_CLOCK_120M);                                              // 初始化芯片时钟 工作频率为 120MHz
     debug_init();                                                               // 初始化默认 debug uart
 		menu_init();                                                                //菜单初始化
@@ -609,11 +620,11 @@ int main (void)
     encoder_quad_init(ENCODER_2, ENCODER_2_A, ENCODER_2_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
 		pit_ms_init(PIT, 50);
 
-		//PID_Init(&pid1,0.12f,0.36f,0.12f,3200.0f);
-		//PID_Init(&pid2,0.12f,0.394f,0.14f,3200.0f);
-		//PID_SetOutputLimits(&pid1,-2600.0f,2600.0f);             // 初始化pid参数
-		//PID_SetOutputLimits(&pid2,-2600.0f,2600.0f);
-		PID_Init_line(&pidline,13.5f,0,0.0f,94.0f);
+		PID_Init(&pid1,2.0f,0.8f,0.0f,750.0f);
+		PID_Init(&pid2,2.0f,0.8f,0.0f,750.0f);
+		PID_SetOutputLimits(&pid1,-3000.0f,3000.0f);             // 初始化pid参数
+		PID_SetOutputLimits(&pid2,-3000.0f,3000.0f);
+		PID_Init_line(&pidline,14.0f,0,0.0f,94.0f);
 		PID_SetOutputLimits_line(&pidline,-1200.0f,1200.0f);
 		
 		pit_ms_init(TIM8_PIT, 50);
@@ -622,33 +633,35 @@ int main (void)
     while(1)
     {
         //show_process(NULL);				//菜单启动
-				if(putoutL+turnL*3<0)
+				
+				if(putoutL+turnL*3>0)
 				{
 				gpio_set_level(DIR_L,GPIO_HIGH);
 				pwm_set_duty(PWM_L,putoutL+turnL*3);
 
 				}
 				
-				if(putoutL+turnL*3>=0)
+				if(putoutL+turnL*3<=0)
 				{
 				gpio_set_level(DIR_L,GPIO_LOW);
-				pwm_set_duty(PWM_L,-(putoutL+turnL*3));
+				pwm_set_duty(PWM_L,putoutL+turnL*3);
 
 				}
 				
-				if(putoutR+turnR*3<0)
+				if(putoutR+turnR*3>0)
 				{
 				gpio_set_level(DIR_R,GPIO_HIGH);
 				pwm_set_duty(PWM_R,putoutR+turnR*3);
 
 				}
 				
-				if(putoutR+turnR*3>=0)
+				if(putoutR+turnR*3<=0)
 				{
 				gpio_set_level(DIR_R,GPIO_LOW);
-				pwm_set_duty(PWM_R,-(putoutR+turnR*3));
+				pwm_set_duty(PWM_R,putoutR+turnR*3);
 
 				}
+				
 				
 				//ips200_show_float(0,180,putoutline,5,3);
 				//ips200_show_float(0,200,putoutL,5,3);
@@ -658,6 +671,12 @@ int main (void)
 				//ips200_show_float(0,280,encoder_data_L,5,3);
 				//ips200_show_float(0,300,encoder_data_R,5,3);
 				//ips200_show_int (0, 160,continuity_change_flag_R,3);
+				//ips200_show_int (0, 180,continuity_change_flag_L,3);
+				//ips200_show_int (0, 200,monotonicity_change_line,3);
+				//ips200_show_int (0, 220,right_down_line,3);
+				//ips200_show_int (0, 220,FLAG2,3);
+				//ips200_show_int (0, 200,FLAG,3);
+				
 				if(mt9v03x_finish_flag)
 				{
 					image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
@@ -752,14 +771,57 @@ int main (void)
 				
 				
     }
+
 		
-		//Continuity_Change_Right(0,120);
 		
-		Cross_Detect();
-		for(H=0;H<=100;H++)
+		if(Find_Right_Down_Point(120,0))
 		{
-		Mid_Line[H]=(Left_Line [H]+Right_Line[H])/2;
+				
+				if(Monotonicity_Change_Right(120,0))
+				{
+						
+						Right_Add_Line(Right_Line[Monotonicity_Change_Right(120,0)],Monotonicity_Change_Right(120,0),Right_Line[Find_Right_Down_Point(120,0)],Find_Right_Down_Point(120,0));
+						//FLAG2=10;
+				}
 		}
+		
+		
+
+
+		Cross_Detect();
+		if(FLAG2==0)
+		{
+			for(H=0;H<=100;H++)
+			{
+				Mid_Line[H]=(Left_Line [H]+Right_Line[H])/2;
+			}
+		}
+		//if(FLAG2>0)
+		//{
+			//for(H=0;H<=100;H++)
+			//{
+				//Mid_Line[H]=(Left_Line [H]+Right_Line[H]+40)/2;
+			//}
+			//FLAG2--;
+		//}
+
+		count=0;
+		t=0;
+		//斑马线
+		for(i=10;i<=180;i++)
+		{
+				
+				if(image_deal[90][i]!=t)
+				{
+						t=image_deal[90][i];
+						count++;
+				}
+		}
+		if(count>=7)
+		{
+				FLAG=1;
+		}
+		
 		
 		//边中线显示
 			for(T=0;T<=100;T++)
@@ -817,7 +879,7 @@ void pit_handler (void)
 		
 		printf("%d,",encoder_data_R);
 		printf("%d,",encoder_data_L);	
-		printf("%d\n",1500);
+		printf("%d\n",900);
 
 
     encoder_clear_count(ENCODER_1);                                             // 清空编码器计数
@@ -840,10 +902,19 @@ void pit_handler1 (void)
 				turnL=-putoutline;
 				turnR=putoutline;
 		}
+		
+		
 		PID_Init(&pid1,2.0f,0.8f,0.0f,1000.0f);
 		PID_Init(&pid2,2.0f,0.8f,0.0f,1000.0f);
 		PID_SetOutputLimits(&pid1,-3000.0f,3000.0f);             // 初始化pid参数
 		PID_SetOutputLimits(&pid2,-3000.0f,3000.0f);
 		putoutL = PID_Compute(&pid1, putinL);
 		putoutR = PID_Compute(&pid2, putinR);
+		if(FLAG)
+		{
+				putoutL=0;
+				putoutR=0;
+				turnL=0;
+				turnR=0;
+		}
 }
