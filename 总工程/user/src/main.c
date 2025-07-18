@@ -677,8 +677,8 @@ int main (void)
 				//ips200_show_int (0, 180,continuity_change_flag_L,3);
 				//ips200_show_int (0, 200,monotonicity_change_line,3);
 				//ips200_show_int (0, 220,right_down_line,3);
-				//ips200_show_int (0, 220,FLAG2,3);
-				//ips200_show_int (0, 240,COUNT,3);
+				ips200_show_int (0, 220,FLAG2,3);
+				ips200_show_int (0, 240,COUNT,3);
 				//ips200_show_int (0, 200,FLAG,3);
 				
 				if(mt9v03x_finish_flag)
@@ -785,7 +785,7 @@ int main (void)
 						{
 							if(Right_Lost_Time>=30)
 							{
-								//FLAG3=1;
+								FLAG3=1;
 								//FLAG2=1;
 								COUNT++;
 							}
@@ -803,16 +803,16 @@ int main (void)
 		{
 			if(FLAG3==1)
 			{
-				if(sum>0&&sum<8000)
+				if(sum>0&&sum<7000)
 				{
 						Right_Add_Line(120,40,167,119);
 				}
 				
 				if(sum>11102)
 				{
-					Left_Add_Line(130,30,30,119);
+					Left_Add_Line(150,30,40,119);
 				}
-				if(sum>=17000)
+				if(sum>=16000)
 				{
 					sum=0;
 					FLAG3=0;
@@ -919,7 +919,7 @@ void pit_handler (void)
 void pit_handler1 (void)
 {
     
-		putinline=(Mid_Line[45]+Mid_Line[46]+Mid_Line[47]+Mid_Line[48])/4;
+		putinline=(Mid_Line[50]+Mid_Line[51]+Mid_Line[52]+Mid_Line[53])/4;
 		putoutline = PID_Compute_line(&pidline, putinline);
 		if(putinline>=94)                                                           //右转
 		{
