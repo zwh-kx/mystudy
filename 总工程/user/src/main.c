@@ -42,6 +42,7 @@ uint8    T;
 uint8    FLAG;
 uint8    FLAG2;
 uint8    FLAG3;
+int32 sum;
 
 
 uint8 COUNT;
@@ -621,50 +622,49 @@ int main (void)
 		
     encoder_quad_init(ENCODER_1, ENCODER_1_A, ENCODER_1_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
     encoder_quad_init(ENCODER_2, ENCODER_2_A, ENCODER_2_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
-		pit_ms_init(PIT, 50);
+		pit_ms_init(PIT, 20);
 
-		PID_Init(&pid1,2.0f,0.8f,0.0f,750.0f);
-		PID_Init(&pid2,2.0f,0.8f,0.0f,750.0f);
-		PID_SetOutputLimits(&pid1,-3000.0f,3000.0f);             // 初始化pid参数
-		PID_SetOutputLimits(&pid2,-3000.0f,3000.0f);
-		PID_Init_line(&pidline,13.5f,0,0.0f,94.0f);
-		PID_SetOutputLimits_line(&pidline,-1200.0f,1200.0f);
+		PID_Init(&pid1,2.2f,0.5f,0.05f,550.0f);
+		//PID_Init(&pid2,3.0f,0.7f,0.05f,800.0f);
+		PID_SetOutputLimits(&pid1,-5000.0f,5000.0f);             // 初始化pid参数
+		//PID_SetOutputLimits(&pid2,-1000.0f,1000.0f);
+		PID_Init_line(&pidline,35.0f,0,0.0f,94.0f);
+		PID_SetOutputLimits_line(&pidline,-3000.0f,3000.0f);
 		
-		pit_ms_init(TIM8_PIT, 50);
+		pit_ms_init(TIM8_PIT, 20);
 		
 		
     while(1)
     {
         //show_process(NULL);				//菜单启动
 				
-				if(putoutL+turnL*3>0)
+				if(putoutL/2+turnL>0)
 				{
 				gpio_set_level(DIR_L,GPIO_HIGH);
-				pwm_set_duty(PWM_L,putoutL+turnL*3);
+				pwm_set_duty(PWM_L,putoutL/2+turnL);
 
 				}
 				
-				if(putoutL+turnL*3<=0)
+				if(putoutL/2+turnL<=0)
 				{
 				gpio_set_level(DIR_L,GPIO_LOW);
-				pwm_set_duty(PWM_L,putoutL+turnL*3);
+				pwm_set_duty(PWM_L,putoutL/2+turnL);
 
 				}
 				
-				if(putoutR+turnR*3>0)
+				if(putoutL/2+turnR>0)
 				{
 				gpio_set_level(DIR_R,GPIO_HIGH);
-				pwm_set_duty(PWM_R,putoutR+turnR*3);
+				pwm_set_duty(PWM_R,putoutL/2+turnR);
 
 				}
 				
-				if(putoutR+turnR*3<=0)
+				if(putoutL/2+turnR<=0)
 				{
 				gpio_set_level(DIR_R,GPIO_LOW);
-				pwm_set_duty(PWM_R,putoutR+turnR*3);
+				pwm_set_duty(PWM_R,putoutL/2+turnR);
 
 				}
-				
 				
 				//ips200_show_float(0,180,putoutline,5,3);
 				//ips200_show_float(0,200,putoutL,5,3);
@@ -677,15 +677,15 @@ int main (void)
 				//ips200_show_int (0, 180,continuity_change_flag_L,3);
 				//ips200_show_int (0, 200,monotonicity_change_line,3);
 				//ips200_show_int (0, 220,right_down_line,3);
-				ips200_show_int (0, 220,FLAG2,3);
-				ips200_show_int (0, 240,COUNT,3);
+				//ips200_show_int (0, 220,FLAG2,3);
+				//ips200_show_int (0, 240,COUNT,3);
 				//ips200_show_int (0, 200,FLAG,3);
 				
 				if(mt9v03x_finish_flag)
 				{
 					image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
 
-					ips200_show_gray_image          (0, 0, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
+					//ips200_show_gray_image          (0, 0, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
 					//ips200_displayimage03x(mt9v03x_image[0], 188, 120);
 					for(H=0;H<MT9V03X_H;H++)
 					{
@@ -786,7 +786,7 @@ int main (void)
 							if(Right_Lost_Time>=30)
 							{
 								//FLAG3=1;
-								FLAG2=40;
+								//FLAG2=1;
 								COUNT++;
 							}
 						}
@@ -797,30 +797,35 @@ int main (void)
 
 		
 		
-		if(FLAG2>=15)
-		{
-				Right_Add_Line(135,20,187,119);
-				for(H=0;H<=100;H++)
-			{
-				Mid_Line[H]=(Left_Line [H]+Right_Line[H])/2;
-			}
-		}
+		
 		
 		if(FLAG2==0)
 		{
+			if(FLAG3==1)
+			{
+				if(sum>0&&sum<8000)
+				{
+						Right_Add_Line(120,40,167,119);
+				}
+				
+				if(sum>11102)
+				{
+					Left_Add_Line(130,30,30,119);
+				}
+				if(sum>=17000)
+				{
+					sum=0;
+					FLAG3=0;
+				}
+			}
+		
 			for(H=0;H<=100;H++)
 			{
 				Mid_Line[H]=(Left_Line [H]+Right_Line[H])/2;
 			}
+			
 		}
 		
-		if(FLAG2>0&&FLAG2<15)
-		{	
-			for(H=0;H<=100;H++)
-			{
-				Mid_Line[H]=(Left_Line [H]+Right_Line[H]+80)/2;
-			}
-		}
 		
 		count=0;
 		t=0;
@@ -841,12 +846,12 @@ int main (void)
 		
 		
 		//边中线显示
-			for(T=0;T<=100;T++)
-			{
-					ips200_draw_point(Right_Line[T], T, RGB565_RED);
-					ips200_draw_point(Left_Line[T], T, RGB565_RED);
-					ips200_draw_point(Mid_Line[T], T, RGB565_BLUE);
-			}
+			//for(T=0;T<=100;T++)
+			//{
+					//ips200_draw_point(Right_Line[T], T, RGB565_RED);
+					//ips200_draw_point(Left_Line[T], T, RGB565_RED);
+					//ips200_draw_point(Mid_Line[T], T, RGB565_BLUE);
+			//}
 			
 			
 			//数组清零
@@ -881,6 +886,13 @@ void pit_handler (void)
 		putinL=encoder_data_L;
 		putinR=encoder_data_R;
 		
+		
+		
+		if(FLAG3==1)
+		{
+			sum=sum+encoder_data_R;
+		}
+		
 		//printf("OUTL  \t%f .\r\n", putoutL);                 
 		//printf("OUTR  \t%f .\r\n", putoutR);                 
 		//printf("INL  \t%f .\r\n", putinL);                 
@@ -896,13 +908,9 @@ void pit_handler (void)
 		
 		//printf("%d,",encoder_data_R);
 		//printf("%d,",encoder_data_L);	
-		//printf("%d\n",900);
+		//printf("%d\n",300);
+		//printf("%d\n,",sum);
 
-
-		if(FLAG2>0)
-		{
-				FLAG2--;
-		}
 		
     encoder_clear_count(ENCODER_1);                                             // 清空编码器计数
 		encoder_clear_count(ENCODER_2);                                             // 清空编码器计数
@@ -911,7 +919,7 @@ void pit_handler (void)
 void pit_handler1 (void)
 {
     
-		putinline=(Mid_Line[48]+Mid_Line[49]+Mid_Line[50]+Mid_Line[51])/4;
+		putinline=(Mid_Line[45]+Mid_Line[46]+Mid_Line[47]+Mid_Line[48])/4;
 		putoutline = PID_Compute_line(&pidline, putinline);
 		if(putinline>=94)                                                           //右转
 		{
@@ -925,13 +933,8 @@ void pit_handler1 (void)
 				turnR=putoutline;
 		}
 		
-		
-		PID_Init(&pid1,2.0f,0.8f,0.0f,900.0f);
-		PID_Init(&pid2,2.0f,0.8f,0.0f,900.0f);
-		PID_SetOutputLimits(&pid1,-3000.0f,3000.0f);             // 初始化pid参数
-		PID_SetOutputLimits(&pid2,-3000.0f,3000.0f);
-		putoutL = PID_Compute(&pid1, putinL);
-		putoutR = PID_Compute(&pid2, putinR);
+		putoutL = PID_Compute(&pid1, putinL+putinR);
+		//putoutR = PID_Compute(&pid2, putinR);
 		if(FLAG)
 		{
 				putoutL=0;
