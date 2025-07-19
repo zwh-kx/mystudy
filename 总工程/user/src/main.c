@@ -46,6 +46,7 @@ int32 sum;
 
 
 uint8 COUNT;
+uint8 COUNT1;
 uint8 count;
 
 float putoutline;
@@ -628,7 +629,7 @@ int main (void)
 		//PID_Init(&pid2,3.0f,0.7f,0.05f,800.0f);
 		PID_SetOutputLimits(&pid1,-5000.0f,5000.0f);             // 初始化pid参数
 		//PID_SetOutputLimits(&pid2,-1000.0f,1000.0f);
-		PID_Init_line(&pidline,35.0f,0,0.0f,94.0f);
+		PID_Init_line(&pidline,38.0f,0,0.0f,94.0f);
 		PID_SetOutputLimits_line(&pidline,-3000.0f,3000.0f);
 		
 		pit_ms_init(TIM8_PIT, 20);
@@ -677,8 +678,9 @@ int main (void)
 				//ips200_show_int (0, 180,continuity_change_flag_L,3);
 				//ips200_show_int (0, 200,monotonicity_change_line,3);
 				//ips200_show_int (0, 220,right_down_line,3);
-				ips200_show_int (0, 220,FLAG2,3);
-				ips200_show_int (0, 240,COUNT,3);
+				//ips200_show_int (0, 220,FLAG3,3);
+				//ips200_show_int (0, 240,COUNT,3);
+				//ips200_show_int (0, 260,COUNT1,3);
 				//ips200_show_int (0, 200,FLAG,3);
 				
 				if(mt9v03x_finish_flag)
@@ -783,7 +785,7 @@ int main (void)
 				{
 						if(Left_Lost_Time<=5)
 						{
-							if(Right_Lost_Time>=30)
+							if(Right_Lost_Time>=30&&FLAG3==0)
 							{
 								FLAG3=1;
 								//FLAG2=1;
@@ -815,8 +817,26 @@ int main (void)
 				if(sum>=16000)
 				{
 					sum=0;
-					FLAG3=0;
+					FLAG3=2;
 				}
+			}
+			if(FLAG3==2)
+			{
+					if(Left_Lost_Time>15)
+					{
+							if(Right_Lost_Time>15)
+							{
+									if(image_deal[40][94]==0)
+									{
+											Left_Add_Line(187,40,1,119);
+											COUNT1++;
+											if(sum>=30)
+											{
+												FLAG3=0;
+											}
+									}
+							}
+					}
 			}
 		
 			for(H=0;H<=100;H++)
@@ -839,7 +859,7 @@ int main (void)
 						count++;
 				}
 		}
-		if(count>=7)
+		if(count>=11)
 		{
 				FLAG=1;
 		}
@@ -891,6 +911,10 @@ void pit_handler (void)
 		if(FLAG3==1)
 		{
 			sum=sum+encoder_data_R;
+		}
+		if(FLAG3==2)
+		{
+			sum=sum+1;
 		}
 		
 		//printf("OUTL  \t%f .\r\n", putoutL);                 
