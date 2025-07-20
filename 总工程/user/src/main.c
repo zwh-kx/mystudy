@@ -80,6 +80,7 @@ int continuity_change_flag_R;
 int continuity_change_flag_L;
 int monotonicity_change_line;
 int right_down_line;
+int left_down_line;
 
 //元素识别函数
 /*-------------------------------------------------------------------------------------------------------------------
@@ -123,9 +124,9 @@ void Find_Down_Point(int start,int end)
            abs(Right_Line[i]-Right_Line[i+1])<=5&&//角点的阈值可以更改
            abs(Right_Line[i+1]-Right_Line[i+2])<=5&&
            abs(Right_Line[i+2]-Right_Line[i+3])<=5&&
-              (Right_Line[i]-Right_Line[i-2])<=-5&&
-              (Right_Line[i]-Right_Line[i-3])<=-8&&
-              (Right_Line[i]-Right_Line[i-4])<=-8)
+              (Right_Line[i]-Right_Line[i-2])<=-6&&
+              (Right_Line[i]-Right_Line[i-3])<=-9&&
+              (Right_Line[i]-Right_Line[i-4])<=-9)
         {
             Right_Down_Find=i;
         }
@@ -167,9 +168,9 @@ void Find_Up_Point(int start,int end)
            abs(Left_Line[i]-Left_Line[i-1])<=5&&
            abs(Left_Line[i-1]-Left_Line[i-2])<=5&&
            abs(Left_Line[i-2]-Left_Line[i-3])<=5&&
-              (Left_Line[i]-Left_Line[i+2])>=5&&
-              (Left_Line[i]-Left_Line[i+3])>=8&&
-              (Left_Line[i]-Left_Line[i+4])>=8)
+              (Left_Line[i]-Left_Line[i+2])>=6&&
+              (Left_Line[i]-Left_Line[i+3])>=9&&
+              (Left_Line[i]-Left_Line[i+4])>=9)
         {
             Left_Up_Find=i;//获取行数即可
         }
@@ -408,9 +409,9 @@ void Cross_Detect()
 		Left_Up_Find=0;
 		Right_Up_Find=0;
 		Both_Lost_Time=Left_Lost_Time>=Right_Lost_Time?Right_Lost_Time:Left_Lost_Time;
-        if(Both_Lost_Time>=10)//十字必定有双边丢线，在有双边丢线的情况下再开始找角点
+        if(Both_Lost_Time>=20)//十字必定有双边丢线，在有双边丢线的情况下再开始找角点
         {
-            Find_Up_Point( MT9V03X_H-35, 0 );
+            Find_Up_Point( MT9V03X_H-40, 20 );
             if(Left_Up_Find==0&&Right_Up_Find==0)//只要没有同时找到两个上点，直接结束
             {
                 return;
@@ -502,7 +503,7 @@ int Monotonicity_Change_Right(int start,int end)//单调性改变，返回值是
 }
 
 /*-------------------------------------------------------------------------------------------------------------------
-  @brief     右下角点检测
+  @brief     左右下角点检测
   @param     起始点，终止点
   @return    返回角点所在的行数，找不到返回0
   Sample     Find_Right_Down_Point(int start,int end);
@@ -541,6 +542,41 @@ int Find_Right_Down_Point(int start,int end)//找四个角点，返回值是角�
     }
     return right_down_line;
 }
+
+int Find_Left_Down_Point(int start,int end)//找四个角点，返回值是角点所在的行数
+{
+    left_down_line=0;
+    if(Left_Lost_Time>=0.9*MT9V03X_H)//大部分都丢线，没有拐点判断的意义
+        return left_down_line;
+    if(start<end)
+    {
+        t=start;
+        start=end;
+        end=t;
+    }
+    if(start>=MT9V03X_H-1-5)//下面5行数据不稳定，不能作为边界点来判断，舍弃
+        start=MT9V03X_H-1-5;
+    if(end<=MT9V03X_H-Search_Stop_Line)
+        end=MT9V03X_H-Search_Stop_Line;
+    if(end<=5)
+       end=5;
+    for(i=start;i>=end;i--)
+    {
+        if(left_down_line==0&&//只找第一个符合条件的点
+           abs(Left_Line[i]-Left_Line[i+1])<=5&&//角点的阈值可以更改
+           abs(Left_Line[i+1]-Left_Line[i+2])<=5&&  
+           abs(Left_Line[i+2]-Left_Line[i+3])<=5&&
+              (Left_Line[i]-Left_Line[i-2])>=7&&
+              (Left_Line[i]-Left_Line[i-3])>=10&&
+              (Left_Line[i]-Left_Line[i-4])>=12)
+        {
+            left_down_line=i;//获取行数即可
+            break;
+        }
+    }
+    return left_down_line;
+}
+
 
 /*-------------------------------------------------------------------------------------------------------------------
   @brief     左右赛道连续性检测
@@ -680,7 +716,7 @@ int main (void)
 				//ips200_show_int (0, 220,right_down_line,3);
 				//ips200_show_int (0, 220,FLAG3,3);
 				//ips200_show_int (0, 240,COUNT,3);
-				//ips200_show_int (0, 260,COUNT1,3);
+				ips200_show_int (0, 260,COUNT1,3);
 				//ips200_show_int (0, 200,FLAG,3);
 				
 				if(mt9v03x_finish_flag)
@@ -781,15 +817,15 @@ int main (void)
 		
 		if(Find_Right_Down_Point(120,70))
 		{
-				if(Monotonicity_Change_Right(100,20))
+				if(Monotonicity_Change_Right(80,20))
 				{
 						if(Left_Lost_Time<=5)
 						{
-							if(Right_Lost_Time>=30&&FLAG3==0)
+							if(Right_Lost_Time>=40&&FLAG3==0)
 							{
 								FLAG3=1;
 								//FLAG2=1;
-								COUNT++;
+								//COUNT++;
 							}
 						}
 				}
@@ -814,7 +850,7 @@ int main (void)
 				{
 					Left_Add_Line(150,30,40,119);
 				}
-				if(sum>=16000)
+				if(sum>=13500)
 				{
 					sum=0;
 					FLAG3=2;
@@ -822,18 +858,13 @@ int main (void)
 			}
 			if(FLAG3==2)
 			{
-					if(Left_Lost_Time>15)
+					if(Left_Lost_Time>20)
 					{
-							if(Right_Lost_Time>15)
+							if(Right_Lost_Time>20)
 							{
-									if(image_deal[40][94]==0)
+									if(Find_Left_Down_Point(120,40))
 									{
-											Left_Add_Line(187,40,1,119);
-											COUNT1++;
-											if(sum>=30)
-											{
-												FLAG3=0;
-											}
+											Left_Add_Line(187,50,1,119);
 									}
 							}
 					}
@@ -911,10 +942,6 @@ void pit_handler (void)
 		if(FLAG3==1)
 		{
 			sum=sum+encoder_data_R;
-		}
-		if(FLAG3==2)
-		{
-			sum=sum+1;
 		}
 		
 		//printf("OUTL  \t%f .\r\n", putoutL);                 
