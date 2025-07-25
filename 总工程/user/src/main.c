@@ -722,7 +722,7 @@ int main (void)
 		PID_Init(&pid1,40.0f,0.8f,20.0f,170.0f);
 		PID_SetOutputLimits(&pid1,-5000.0f,5000.0f);                                 // 初始化pid参数
 		PID_Init_line(&pidline,44.0f,0.0f,0.00f,99.0f);
-		Kr=0.03;                                                                    //陀螺仪控制项
+		Kr=0.005;                                                                    //陀螺仪控制项
 		PID_SetOutputLimits_line(&pidline,-3000.0f,3000.0f);
 		pit_ms_init(TIM8_PIT, 5);                                                    //pid中断
 		
