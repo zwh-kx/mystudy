@@ -42,7 +42,12 @@ uint8    T;
 uint8    FLAG;
 uint8    FLAG2;
 uint8    FLAG3;
+uint8    FLAG4;
+
+
 int32 sum;
+float sumx;
+float x;
 
 
 uint8 COUNT;
@@ -51,6 +56,11 @@ uint8 count;
 
 float putoutline;
 float putinline;
+
+int16 p;
+
+
+int16 otsuflag;
 
 uint8 White_Column[MT9V03X_W];
 uint8 Longest_White_Column_Left[2] ={0};
@@ -81,6 +91,14 @@ int continuity_change_flag_L;
 int monotonicity_change_line;
 int right_down_line;
 int left_down_line;
+
+extern uint16 menuflag1;
+extern uint16 menuflag2;
+extern uint16 menuflag3;
+
+int16 roundflag;
+
+extern float Kr;
 
 //元素识别函数
 /*-------------------------------------------------------------------------------------------------------------------
@@ -411,7 +429,7 @@ void Cross_Detect()
 		Both_Lost_Time=Left_Lost_Time>=Right_Lost_Time?Right_Lost_Time:Left_Lost_Time;
         if(Both_Lost_Time>=20)//十字必定有双边丢线，在有双边丢线的情况下再开始找角点
         {
-            Find_Up_Point( MT9V03X_H-40, 20 );
+            Find_Up_Point( MT9V03X_H, 30 );
             if(Left_Up_Find==0&&Right_Up_Find==0)//只要没有同时找到两个上点，直接结束
             {
                 return;
@@ -421,7 +439,7 @@ void Cross_Detect()
         {
             Cross_Flag=1;//确定对应标志位，便于各元素互斥掉
             down_search_start=Left_Up_Find>Right_Up_Find?Left_Up_Find:Right_Up_Find;//用两个上拐点坐标靠下者作为下点的搜索上限
-            Find_Down_Point(MT9V03X_H-5,down_search_start+2);//在上拐点下2行作为下角点的截止行
+            Find_Down_Point(MT9V03X_H-5,down_search_start+30);//在上拐点下2行作为下角点的截止行
             if(Left_Down_Find<=Left_Up_Find)
             {
                 Left_Down_Find=0;//下点不可能比上点还靠上
@@ -502,6 +520,41 @@ int Monotonicity_Change_Right(int start,int end)//单调性改变，返回值是
     return monotonicity_change_line;
 }
 
+int Monotonicity_Change_Left(int start,int end)//单调性改变，返回值是单调性改变点所在的行数
+{
+		monotonicity_change_line=0;
+    if(Left_Lost_Time>=0.9*MT9V03X_H)//大部分都丢线，没有单调性判断的意义
+        return monotonicity_change_line;
+    if(start>=MT9V03X_H-1-5)//数组越界保护
+        start=MT9V03X_H-1-5;
+     if(end<=5)
+        end=5;
+    if(start<=end)
+        return monotonicity_change_line;
+    for(i=start;i>=end;i--)//会读取前5后5数据，所以前面对输入范围有要求
+    {
+        if(Left_Line[i]==Left_Line[i+5]&&Left_Line[i]==Left_Line[i-5]&&
+        Left_Line[i]==Left_Line[i+4]&&Left_Line[i]==Left_Line[i-4]&&
+        Left_Line[i]==Left_Line[i+3]&&Left_Line[i]==Left_Line[i-3]&&
+        Left_Line[i]==Left_Line[i+2]&&Left_Line[i]==Left_Line[i-2]&&
+        Left_Line[i]==Left_Line[i+1]&&Left_Line[i]==Left_Line[i-1])
+        {//一堆数据一样，显然不能作为单调转折点
+            continue;
+        }
+        else if(Left_Line[i] >Left_Line[i+5]&&Left_Line[i] >Left_Line[i-5]&&
+        Left_Line[i] >Left_Line[i+4]&&Left_Line[i] >Left_Line[i-4]&&
+        Left_Line[i]>=Left_Line[i+3]&&Left_Line[i]>=Left_Line[i-3]&&
+        Left_Line[i]>=Left_Line[i+2]&&Left_Line[i]>=Left_Line[i-2]&&
+        Left_Line[i]>=Left_Line[i+1]&&Left_Line[i]>=Left_Line[i-1]&&
+				Left_Line[i]-Left_Line[i-4]<=20)
+        {//就很暴力，这个数据是在前5，后5中最大的，那就是单调突变点
+            monotonicity_change_line=i;
+            break;
+        }
+    }
+    return monotonicity_change_line;
+}
+
 /*-------------------------------------------------------------------------------------------------------------------
   @brief     左右下角点检测
   @param     起始点，终止点
@@ -532,9 +585,9 @@ int Find_Right_Down_Point(int start,int end)//找四个角点，返回值是角�
            abs(Right_Line[i]-Right_Line[i+1])<=5&&//角点的阈值可以更改
            abs(Right_Line[i+1]-Right_Line[i+2])<=5&&  
            abs(Right_Line[i+2]-Right_Line[i+3])<=5&&
-              (Right_Line[i]-Right_Line[i-2])<=-4&&
-              (Right_Line[i]-Right_Line[i-3])<=-8&&
-              (Right_Line[i]-Right_Line[i-4])<=-8)
+              (Right_Line[i]-Right_Line[i-2])<=-5&&
+              (Right_Line[i]-Right_Line[i-3])<=-10&&
+              (Right_Line[i]-Right_Line[i-4])<=-10)
         {
             right_down_line=i;//获取行数即可
             break;
@@ -643,14 +696,19 @@ int Continuity_Change_Left(int start,int end)
 
 int main (void)
 {
+		roundflag=1;
+		otsuflag=1;
 		COUNT=0;
 		FLAG2=0;
 		FLAG=0;                                                                     //停车标志位
+		menuflag1=0;                                                                //用于控制发车
 		clock_init(SYSTEM_CLOCK_120M);                                              // 初始化芯片时钟 工作频率为 120MHz
     debug_init();                                                               // 初始化默认 debug uart
+		
 		menu_init();                                                                //菜单初始化
 		
-		mt9v03x_init();
+		mt9v03x_init();                                                             //摄像头初始化
+		mpu6050_init();                                                             //陀螺仪初始化
 		
 		gpio_init(DIR_L, GPO, GPIO_LOW, GPO_PUSH_PULL);                            // GPIO 初始化为输出 默认上拉输出高
     pwm_init(PWM_L, 17000, 0);                                                  // PWM 通道初始化频率 17KHz 占空比初始为 0
@@ -659,51 +717,53 @@ int main (void)
 		
     encoder_quad_init(ENCODER_1, ENCODER_1_A, ENCODER_1_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
     encoder_quad_init(ENCODER_2, ENCODER_2_A, ENCODER_2_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
-		pit_ms_init(PIT, 20);
+		pit_ms_init(PIT, 5);                                                        // 编码器中断
 
-		PID_Init(&pid1,2.2f,0.5f,0.05f,550.0f);
-		//PID_Init(&pid2,3.0f,0.7f,0.05f,800.0f);
-		PID_SetOutputLimits(&pid1,-5000.0f,5000.0f);             // 初始化pid参数
-		//PID_SetOutputLimits(&pid2,-1000.0f,1000.0f);
-		PID_Init_line(&pidline,38.0f,0,0.0f,94.0f);
+		PID_Init(&pid1,40.0f,0.8f,20.0f,170.0f);
+		PID_SetOutputLimits(&pid1,-5000.0f,5000.0f);                                 // 初始化pid参数
+		PID_Init_line(&pidline,44.0f,0.0f,0.00f,99.0f);
+		Kr=0.03;                                                                    //陀螺仪控制项
 		PID_SetOutputLimits_line(&pidline,-3000.0f,3000.0f);
-		
-		pit_ms_init(TIM8_PIT, 20);
+		pit_ms_init(TIM8_PIT, 5);                                                    //pid中断
 		
 		
     while(1)
     {
-        //show_process(NULL);				//菜单启动
+		//printf("\r\nMPU6050 gyro data: x=%5d, y=%5d, z=%5d\r\n", mpu6050_gyro_x, mpu6050_gyro_y, mpu6050_gyro_z);
+		
+		if(menuflag1==0)
+		{
+			show_process(NULL);				//菜单启动
+		}
 				
-				if(putoutL/2+turnL>0)
+		
+				
+				if(menuflag1==1)
 				{
-				gpio_set_level(DIR_L,GPIO_HIGH);
-				pwm_set_duty(PWM_L,putoutL/2+turnL);
-
+						if(putoutL/2+turnL>0)
+						{
+						gpio_set_level(DIR_L,GPIO_HIGH);
+						pwm_set_duty(PWM_L,putoutL/2+turnL);
+						}
+						if(putoutL/2+turnL<=0)
+						{
+						gpio_set_level(DIR_L,GPIO_LOW);
+						pwm_set_duty(PWM_L,putoutL/2+turnL);
+						}
+						if(putoutL/2+turnR>0)
+						{
+						gpio_set_level(DIR_R,GPIO_HIGH);
+						pwm_set_duty(PWM_R,putoutL/2+turnR);
+						}
+						if(putoutL/2+turnR<=0)
+						{
+						gpio_set_level(DIR_R,GPIO_LOW);
+						pwm_set_duty(PWM_R,putoutL/2+turnR);
+						}
 				}
 				
-				if(putoutL/2+turnL<=0)
-				{
-				gpio_set_level(DIR_L,GPIO_LOW);
-				pwm_set_duty(PWM_L,putoutL/2+turnL);
-
-				}
 				
-				if(putoutL/2+turnR>0)
-				{
-				gpio_set_level(DIR_R,GPIO_HIGH);
-				pwm_set_duty(PWM_R,putoutL/2+turnR);
-
-				}
-				
-				if(putoutL/2+turnR<=0)
-				{
-				gpio_set_level(DIR_R,GPIO_LOW);
-				pwm_set_duty(PWM_R,putoutL/2+turnR);
-
-				}
-				
-				//ips200_show_float(0,180,putoutline,5,3);
+				//ips200_show_float(0,180,putoutline,5,3);                                 
 				//ips200_show_float(0,200,putoutL,5,3);
 				//ips200_show_float(0,220,putoutR,5,3);
 				//ips200_show_float(0,240,turnL,5,3);
@@ -716,13 +776,13 @@ int main (void)
 				//ips200_show_int (0, 220,right_down_line,3);
 				//ips200_show_int (0, 220,FLAG3,3);
 				//ips200_show_int (0, 240,COUNT,3);
-				ips200_show_int (0, 260,COUNT1,3);
+				//ips200_show_float(0,300,sumx,4,2);
+				//ips200_show_int (0, 260,COUNT1,3);
 				//ips200_show_int (0, 200,FLAG,3);
 				
 				if(mt9v03x_finish_flag)
 				{
 					image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
-
 					//ips200_show_gray_image          (0, 0, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
 					//ips200_displayimage03x(mt9v03x_image[0], 188, 120);
 					for(H=0;H<MT9V03X_H;H++)
@@ -809,33 +869,30 @@ int main (void)
             }
         }
         Left_Line [H] = left_border;       //左边线线数组
-				
-				
     }
-
-		Cross_Detect();
 		
-		if(Find_Right_Down_Point(120,70))
+		//if(Search_Stop_Line<2)                                                     //识别到的最长白列过短视为出界
+		//{
+		//		FLAG=1;
+		//}
+
+
+		Cross_Detect();                                                            //十字检测及其处理
+		
+		if(Find_Left_Down_Point(120,40))
 		{
-				if(Monotonicity_Change_Right(80,20))
+				if(Monotonicity_Change_Left(80,10))
 				{
-						if(Left_Lost_Time<=5)
+						if(Left_Lost_Time>=20)
 						{
-							if(Right_Lost_Time>=40&&FLAG3==0)
+							if(Right_Lost_Time<5&&FLAG3==0)
 							{
 								FLAG3=1;
-								//FLAG2=1;
 								//COUNT++;
 							}
 						}
 				}
 		}
-		
-
-
-		
-		
-		
 		
 		if(FLAG2==0)
 		{
@@ -843,14 +900,14 @@ int main (void)
 			{
 				if(sum>0&&sum<7000)
 				{
-						Right_Add_Line(120,40,167,119);
+						Left_Add_Line(75,35,43,110);
 				}
 				
-				if(sum>11102)
+				if(sum>8502)
 				{
-					Left_Add_Line(150,30,40,119);
+					Right_Add_Line(80,50,150,80);
 				}
-				if(sum>=13500)
+				if(sum>=12600)
 				{
 					sum=0;
 					FLAG3=2;
@@ -858,18 +915,18 @@ int main (void)
 			}
 			if(FLAG3==2)
 			{
-					if(Left_Lost_Time>20)
-					{
-							if(Right_Lost_Time>20)
-							{
-									if(Find_Left_Down_Point(120,40))
-									{
-											Left_Add_Line(187,50,1,119);
-									}
-							}
-					}
+				if(sumx>=220)
+				{
+						Right_Add_Line(3,40,140,90);
+						//COUNT++;
+						//FLAG4++;
+						if(sumx>=295)
+						{
+								FLAG3=3;
+								sumx=0;
+						}
+				}
 			}
-		
 			for(H=0;H<=100;H++)
 			{
 				Mid_Line[H]=(Left_Line [H]+Right_Line[H])/2;
@@ -878,22 +935,22 @@ int main (void)
 		}
 		
 		
-		count=0;
-		t=0;
+		//count=0;
+		//t=0;
 		//斑马线
-		for(i=10;i<=180;i++)
-		{
+		//for(i=10;i<=180;i++)
+		//{
 				
-				if(image_deal[90][i]!=t)
-				{
-						t=image_deal[90][i];
-						count++;
-				}
-		}
-		if(count>=11)
-		{
-				FLAG=1;
-		}
+				//if(image_deal[90][i]!=t)
+				//{
+						//t=image_deal[90][i];
+						//count++;
+				//}
+		//}
+		//if(count>=11)
+		//{
+				//FLAG=1;
+		//}
 		
 		
 		//边中线显示
@@ -905,7 +962,7 @@ int main (void)
 			//}
 			
 			
-			//数组清零
+	  //数组清零
 		Longest_White_Column_Left[0] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
 		Longest_White_Column_Left[1] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
 		Longest_White_Column_Right[0] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
@@ -922,15 +979,18 @@ int main (void)
 }
 				
 				
-
-
-
-
 void pit_handler (void)
 {
     encoder_data_R = -encoder_get_count(ENCODER_1);                              // 获取编码器计数
     encoder_data_L = encoder_get_count(ENCODER_2);
 		
+		mpu6050_get_gyro();                                                           // 获取陀螺仪数据
+		
+		if(FLAG3==2)
+		{
+			x=mpu6050_gyro_transition(mpu6050_gyro_x);
+			sumx=sumx+x*0.005+0.02;
+		}
 		
 		
 			// 获取编码器计数
@@ -944,6 +1004,7 @@ void pit_handler (void)
 			sum=sum+encoder_data_R;
 		}
 		
+		//printf("\r\n%f", sumx);
 		//printf("OUTL  \t%f .\r\n", putoutL);                 
 		//printf("OUTR  \t%f .\r\n", putoutR);                 
 		//printf("INL  \t%f .\r\n", putinL);                 
@@ -959,7 +1020,7 @@ void pit_handler (void)
 		
 		//printf("%d,",encoder_data_R);
 		//printf("%d,",encoder_data_L);	
-		//printf("%d\n",300);
+		//printf("%d\n",160);
 		//printf("%d\n,",sum);
 
 		
@@ -971,22 +1032,32 @@ void pit_handler1 (void)
 {
     
 		putinline=(Mid_Line[50]+Mid_Line[51]+Mid_Line[52]+Mid_Line[53])/4;
-		putoutline = PID_Compute_line(&pidline, putinline);
-		if(putinline>=94)                                                           //右转
+		putoutline = PID_Compute_line(&pidline, putinline);                                          //转向环输出
+		if(putinline>=99)                                                           //右转
 		{
 				turnL=-putoutline;
 				turnR=putoutline;
 				
 		}
-		if(putinline<94)                                                           //左转
+		if(putinline<99)                                                           //左转
 		{
 				turnL=-putoutline;
 				turnR=putoutline;
 		}
+		if(mpu6050_gyro_x>0)                                                      //陀螺仪
+		{
+				turnL=turnL+Kr*mpu6050_gyro_x;
+				turnR=turnR-Kr*mpu6050_gyro_x;
+		}
+		if(mpu6050_gyro_x<0)
+		{
+				turnL=turnL+Kr*mpu6050_gyro_x;
+				turnR=turnR-Kr*mpu6050_gyro_x;
+		}
 		
 		putoutL = PID_Compute(&pid1, putinL+putinR);
-		//putoutR = PID_Compute(&pid2, putinR);
-		if(FLAG)
+		
+		if(FLAG)                                     //停车
 		{
 				putoutL=0;
 				putoutR=0;

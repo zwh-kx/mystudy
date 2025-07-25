@@ -2,6 +2,9 @@
 #include "auto_menu.h"
 #include "key.h"
 #include "pid.h"
+#include "pidline.h"
+
+
 
 //按键信号量及按键反馈信号量
 #ifdef  MENU_USE_RTT
@@ -608,13 +611,26 @@ double test_c=100;
 uint16 test_d=20;
 uint32 test_e=32;
 
+
+uint16 menuflag1;
+uint16 menuflag2;
+uint16 menuflag3;
+
+extern float Kr;
+
 void UNIT_SET(){
 	//菜单单元调参参数初始化
     unit_param_set(&pid1.Kp,TYPE_FLOAT ,0.1  ,3  ,3,NORMAL_PAR,"p");
     unit_param_set(&pid1.Ki,TYPE_FLOAT ,0.1  ,3  ,3,NORMAL_PAR,"i");
     unit_param_set(&pid1.Kd,TYPE_FLOAT ,0.1  ,4  ,4,NORMAL_PAR,"d");
-    unit_param_set(&test_d,TYPE_UINT16,1    ,6  ,0,NORMAL_PAR,"test_d");
-    unit_param_set(&test_e,TYPE_UINT32,1    ,6  ,0,NORMAL_PAR,"test_e");
+    unit_param_set(&menuflag1,TYPE_UINT16,1  ,1  ,0,NORMAL_PAR,"cargo");
+    unit_param_set(&menuflag2,TYPE_UINT16,1  ,1  ,0,NORMAL_PAR,"flag2");
+		unit_param_set(&menuflag3,TYPE_UINT16,1  ,1  ,0,NORMAL_PAR,"flag3");
+		unit_param_set(&pidline.Kp,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"linep");
+    unit_param_set(&pidline.Ki,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"linei");
+		unit_param_set(&pidline.Kd,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"lined");
+		unit_param_set(&Kr,TYPE_FLOAT,0.001,1  ,3,NORMAL_PAR,"liner");
+		unit_param_set(&pid1.setpoint,TYPE_FLOAT ,1  ,3  ,0,NORMAL_PAR,"speed");
 }
 
 void FUN_INIT(){

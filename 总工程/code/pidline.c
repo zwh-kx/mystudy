@@ -2,6 +2,7 @@
 
 PID_Controller_line pidline;
 
+float Kr;
 
 void PID_Init_line(PID_Controller_line* pid, float Kp, float Ki, float Kd, float setpoint) {
     pid->Kp = Kp;
