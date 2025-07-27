@@ -459,6 +459,16 @@
               <FileType>5</FileType>
               <FilePath>..\code\pidline.h</FilePath>
             </File>
+            <File>
+              <FileName>element.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\element.c</FilePath>
+            </File>
+            <File>
+              <FileName>element.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\element.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
