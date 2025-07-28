@@ -120,29 +120,29 @@ int main (void)
 			show_process(NULL);				//菜单启动
 		}
 				
-				if(menuflag1==1)
+		if(menuflag1==1)
+		{
+				if(putoutL/2+turnL>0)
 				{
-						if(putoutL/2+turnL>0)
-						{
-						gpio_set_level(DIR_L,GPIO_HIGH);
-						pwm_set_duty(PWM_L,putoutL/2+turnL);
-						}
-						if(putoutL/2+turnL<=0)
-						{
-						gpio_set_level(DIR_L,GPIO_LOW);
-						pwm_set_duty(PWM_L,putoutL/2+turnL);
-						}
-						if(putoutL/2+turnR>0)
-						{
-						gpio_set_level(DIR_R,GPIO_HIGH);
-						pwm_set_duty(PWM_R,putoutL/2+turnR);
-						}
-						if(putoutL/2+turnR<=0)
-						{
-						gpio_set_level(DIR_R,GPIO_LOW);
-						pwm_set_duty(PWM_R,putoutL/2+turnR);
-						}
+				gpio_set_level(DIR_L,GPIO_HIGH);
+				pwm_set_duty(PWM_L,putoutL/2+turnL);
 				}
+				if(putoutL/2+turnL<=0)
+				{
+				gpio_set_level(DIR_L,GPIO_LOW);
+				pwm_set_duty(PWM_L,putoutL/2+turnL);
+				}
+				if(putoutL/2+turnR>0)
+				{
+				gpio_set_level(DIR_R,GPIO_HIGH);
+				pwm_set_duty(PWM_R,putoutL/2+turnR);
+				}
+				if(putoutL/2+turnR<=0)
+				{
+				gpio_set_level(DIR_R,GPIO_LOW);
+				pwm_set_duty(PWM_R,putoutL/2+turnR);
+				}
+		}
 				
 				//ips200_show_float(0,180,putoutline,5,3);                                 
 				//ips200_show_float(0,200,putoutL,5,3);
@@ -165,14 +165,13 @@ int main (void)
 				{
 					image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
 					
-							if(menuflag3==1)
+				if(menuflag3==1)
 				{
 						ips200_show_gray_image          (0, 0, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
 						menuflag1=2;
 				}
-					
-					//ips200_show_gray_image          (0, 0, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
 					//ips200_displayimage03x(mt9v03x_image[0], 188, 120);
+//根据阈值将图像二值化
 					for(H=0;H<MT9V03X_H;H++)
 					{
 						for(W=0;W<MT9V03X_W;W++)
@@ -190,7 +189,7 @@ int main (void)
 					mt9v03x_finish_flag = 0;
 				}
 				
-							//统计白线长度
+		//统计白线长度
 		for (W =1; W<=187; W++)
 		{
 				for (H = MT9V03X_H - 1; H >= 20; H--)
