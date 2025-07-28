@@ -20,18 +20,21 @@ extern int monotonicity_change_line;
 extern int continuity_change_flag_R;
 extern int continuity_change_flag_L;
 
-
+//寻点
 void Find_Down_Point(int start,int end);
 void Find_Up_Point(int start,int end);
+int Find_Right_Down_Point(int start,int end);
+int Find_Left_Down_Point(int start,int end);
+int Monotonicity_Change_Right(int start,int end);
+int Monotonicity_Change_Left(int start,int end);
+//补线
 void Left_Add_Line(int x1,int y1,int x2,int y2);
 void Right_Add_Line(int x3,int y3,int x4,int y4);
 void Lengthen_Right_Boundry(int start,int end);
 void Lengthen_Left_Boundry(int start,int end);
+//十字处理
 void Cross_Detect();
-int Monotonicity_Change_Right(int start,int end);
-int Monotonicity_Change_Left(int start,int end);
-int Find_Right_Down_Point(int start,int end);
-int Find_Left_Down_Point(int start,int end);
+//连续性
 int Continuity_Change_Right(int start,int end);
 int Continuity_Change_Left(int start,int end);
 

@@ -1,6 +1,7 @@
 #include "pidline.h"
 
-PID_Controller_line pidline;
+PID_Controller_line pidline_line;
+PID_Controller_line pidline_turn;
 
 float Kr;
 

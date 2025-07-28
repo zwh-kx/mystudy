@@ -14,7 +14,8 @@ typedef struct {
     float out_min;     
 } PID_Controller_line;
 
-extern PID_Controller_line pidline;
+extern PID_Controller_line pidline_line;
+extern PID_Controller_line pidline_turn;
 
 
 void PID_Init_line(PID_Controller_line* pid, float Kp, float Ki, float Kd,float setpoint);

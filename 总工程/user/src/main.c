@@ -104,11 +104,12 @@ int main (void)
     encoder_dir_init(ENCODER_2, ENCODER_2_A, ENCODER_2_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
 		pit_ms_init(TIM6_PIT, 5);                                                        // 编码器中断
 
-		PID_Init(&pid1,40.0f,0.8f,20.0f,180.0f);
-		PID_SetOutputLimits(&pid1,-5000.0f,5000.0f);                                 // 初始化pid参数
-		PID_Init_line(&pidline,44.0f,0.0f,0.00f,99.0f);
-		Kr=0.005;                                                                    //陀螺仪控制项
-		PID_SetOutputLimits_line(&pidline,-3000.0f,3000.0f);
+		PID_Init(&pid1,40.0f,0.8f,20.0f,200.0f);                                    //速度环
+		PID_SetOutputLimits(&pid1,-4000.0f,4000.0f);                                
+		PID_Init_line(&pidline_turn,52.0f,0.0f,0.00f,101.0f);                      //弯道转向环
+		PID_Init_line(&pidline_line,44.0f,0.0f,0.2f,101.0f);                      //直道转向环
+		Kr=0.0;                                                                    //陀螺仪控制项
+		PID_SetOutputLimits_line(&pidline_turn,-3000.0f,3000.0f);
 		pit_ms_init(TIM8_PIT, 5);                                                    //pid中断
 		
 		
@@ -164,14 +165,13 @@ int main (void)
 				if(mt9v03x_finish_flag)
 				{
 					image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
-					
 				if(menuflag3==1)
 				{
 						ips200_show_gray_image          (0, 0, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
 						menuflag1=2;
 				}
 					//ips200_displayimage03x(mt9v03x_image[0], 188, 120);
-//根据阈值将图像二值化
+          //根据阈值将图像二值化
 					for(H=0;H<MT9V03X_H;H++)
 					{
 						for(W=0;W<MT9V03X_W;W++)
@@ -258,11 +258,26 @@ int main (void)
         Left_Line [H] = left_border;       //左边线线数组
     }
 		
-		//if(Search_Stop_Line<2)                                                     //识别到的最长白列过短视为出界
-		//{
-		//		FLAG=1;
-		//}
-
+		if(Search_Stop_Line<5)                                                     //识别到的最长白列过短视为出界
+		{
+				FLAG=1;
+		}
+		if(encoder_data_L>=250)                      //堵转保护
+		{
+				FLAG=1;
+		}
+		if(encoder_data_L<=-250)                      
+		{
+				FLAG=1;
+		}
+		if(encoder_data_R>=250)                      
+		{
+				FLAG=1;
+		}
+		if(encoder_data_R<=-250)                      
+		{
+				FLAG=1;
+		}
 
 		Cross_Detect();                                                            //十字检测及其处理
 		
@@ -275,7 +290,6 @@ int main (void)
 							if(Right_Lost_Time<5&&FLAG3==0)
 							{
 								//FLAG3=1;
-								//COUNT++;
 							}
 						}
 				}
@@ -340,13 +354,15 @@ int main (void)
 		
 		
 		//边中线显示
-			//for(T=0;T<=100;T++)
-			//{
-					//ips200_draw_point(Right_Line[T], T, RGB565_RED);
-					//ips200_draw_point(Left_Line[T], T, RGB565_RED);
-					//ips200_draw_point(Mid_Line[T], T, RGB565_BLUE);
-			//}
-			
+		if(menuflag3==1)
+		{
+			for(i=0;i<=100;i++)
+			{
+					ips200_draw_point(Right_Line[i], i, RGB565_RED);
+					ips200_draw_point(Left_Line[i], i, RGB565_RED);
+					ips200_draw_point(Mid_Line[i], i, RGB565_BLUE);
+			}
+		}
 			
 	  //数组清零
 		Longest_White_Column_Left[0] = 0;//最长白列,[0]是最长白列的长度，[1】是第某列
@@ -406,7 +422,7 @@ void pit_handler (void)
  
 void pit_handler1 (void)
 {
-    if(menuflag2==1)
+    if(menuflag2==1)																												//菜单改前瞻
 		{
 		putinline=(Mid_Line[50]+Mid_Line[51]+Mid_Line[52]+Mid_Line[53])/4;
 		}
@@ -414,13 +430,22 @@ void pit_handler1 (void)
 		{
 		putinline=(Mid_Line[60]+Mid_Line[61]+Mid_Line[62]+Mid_Line[63])/4;
 		}
-		putoutline = PID_Compute_line(&pidline, putinline);                                          //转向环输出
-		if(putinline>=99)                                                           //右转
+		
+		if(putinline>=116 || putinline<=76)                                     //转弯直道两套pid
+		{
+			putoutline = PID_Compute_line(&pidline_turn, putinline);                                          
+		}
+		if(putinline<131 && putinline>71)
+		{
+			putoutline = PID_Compute_line(&pidline_line, putinline);
+		}
+		
+		if(putinline>=101)                                                           //右转
 		{
 				turnL=-putoutline;
 				turnR=putoutline;
 		}
-		if(putinline<99)                                                           //左转
+		if(putinline<101)                                                           //左转
 		{
 				turnL=-putoutline;
 				turnR=putoutline;
@@ -436,8 +461,10 @@ void pit_handler1 (void)
 				turnR=turnR-Kr*mpu6050_gyro_x;
 		}
 		
-		putoutL = PID_Compute(&pid1, putinL+putinR);
-		
+		if(menuflag1==1)
+		{
+				putoutL = PID_Compute(&pid1, putinL+putinR);
+		}
 		if(FLAG)                                     //停车
 		{
 				putoutL=0;

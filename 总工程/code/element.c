@@ -54,9 +54,9 @@ void Find_Down_Point(int start,int end)
            abs(Right_Line[i]-Right_Line[i+1])<=5&&//角点的阈值可以更改
            abs(Right_Line[i+1]-Right_Line[i+2])<=5&&
            abs(Right_Line[i+2]-Right_Line[i+3])<=5&&
-              (Right_Line[i]-Right_Line[i-2])<=-6&&
-              (Right_Line[i]-Right_Line[i-3])<=-9&&
-              (Right_Line[i]-Right_Line[i-4])<=-9)
+              (Right_Line[i]-Right_Line[i-2])<=-5&&
+              (Right_Line[i]-Right_Line[i-3])<=-8&&
+              (Right_Line[i]-Right_Line[i-4])<=-8)
         {
             Right_Down_Find=i;
         }
@@ -89,9 +89,9 @@ void Find_Up_Point(int start,int end)
            abs(Left_Line[i]-Left_Line[i-1])<=5&&
            abs(Left_Line[i-1]-Left_Line[i-2])<=5&&
            abs(Left_Line[i-2]-Left_Line[i-3])<=5&&
-              (Left_Line[i]-Left_Line[i+2])>=6&&
-              (Left_Line[i]-Left_Line[i+3])>=9&&
-              (Left_Line[i]-Left_Line[i+4])>=9)
+              (Left_Line[i]-Left_Line[i+2])>=5&&
+              (Left_Line[i]-Left_Line[i+3])>=8&&
+              (Left_Line[i]-Left_Line[i+4])>=8)
         {
             Left_Up_Find=i;//获取行数即可
         }

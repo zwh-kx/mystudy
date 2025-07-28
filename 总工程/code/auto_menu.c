@@ -623,13 +623,20 @@ void UNIT_SET(){
     unit_param_set(&pid1.Kp,TYPE_FLOAT ,0.1  ,3  ,3,NORMAL_PAR,"p");
     unit_param_set(&pid1.Ki,TYPE_FLOAT ,0.1  ,3  ,3,NORMAL_PAR,"i");
     unit_param_set(&pid1.Kd,TYPE_FLOAT ,0.1  ,4  ,4,NORMAL_PAR,"d");
+		
     unit_param_set(&menuflag1,TYPE_UINT16,1  ,1  ,0,NORMAL_PAR,"cargo");
     unit_param_set(&menuflag2,TYPE_UINT16,1  ,1  ,0,NORMAL_PAR,"target");
 		unit_param_set(&menuflag3,TYPE_UINT16,1  ,1  ,0,NORMAL_PAR,"view");
-		unit_param_set(&pidline.Kp,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"linep");
-    unit_param_set(&pidline.Ki,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"linei");
-		unit_param_set(&pidline.Kd,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"lined");
-		unit_param_set(&Kr,TYPE_FLOAT,0.001,1  ,3,NORMAL_PAR,"liner");
+		
+		unit_param_set(&pidline_turn.Kp,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"turnp");
+    unit_param_set(&pidline_turn.Ki,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"turni");
+		unit_param_set(&pidline_turn.Kd,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"turnd");
+		
+		unit_param_set(&pidline_line.Kp,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"linep");
+    unit_param_set(&pidline_line.Ki,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"linei");
+		unit_param_set(&pidline_line.Kd,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"lined");
+		
+		//unit_param_set(&Kr,TYPE_FLOAT,0.001,1  ,3,NORMAL_PAR,"liner");
 		unit_param_set(&pid1.setpoint,TYPE_FLOAT ,1  ,3  ,3,NORMAL_PAR,"speed");
 }
 
