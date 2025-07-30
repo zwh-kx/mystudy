@@ -109,35 +109,35 @@ void button_entry(void *parameter)
 
 		
 		//长按检测
-		if(!key1_state)
-		{
-			long_press_cnt++;
-			long_press_cnt=long_press_cnt>LONG_PRESS_TIME?LONG_PRESS_TIME:long_press_cnt;
-			if(long_press_cnt>=LONG_PRESS_TIME)long_press_button=1;
-		}
-		else if(!key2_state)
-		{
-			long_press_cnt++;
-			long_press_cnt=long_press_cnt>LONG_PRESS_TIME?LONG_PRESS_TIME:long_press_cnt;
-			if(long_press_cnt>=LONG_PRESS_TIME)long_press_button=2;
-		}
-		else if(!key3_state)
-		{
-			long_press_cnt++;
-			long_press_cnt=long_press_cnt>LONG_PRESS_TIME?LONG_PRESS_TIME:long_press_cnt;
-			if(long_press_cnt>=LONG_PRESS_TIME)long_press_button=3;
-		}
-		else if(!key4_state)
-		{
-			long_press_cnt++;
-			long_press_cnt=long_press_cnt>LONG_PRESS_TIME?LONG_PRESS_TIME:long_press_cnt;
-			if(long_press_cnt>=LONG_PRESS_TIME)long_press_button=4;
-		}
-		else
-		{
-			long_press_cnt=0;
-			long_press_button=0;
-		}
+		//if(!key1_state)
+		//{
+		//	long_press_cnt++;
+		//	long_press_cnt=long_press_cnt>LONG_PRESS_TIME?LONG_PRESS_TIME:long_press_cnt;
+		//	if(long_press_cnt>=LONG_PRESS_TIME)long_press_button=1;
+		//}
+		//else if(!key2_state)
+		//{
+		//	long_press_cnt++;
+		//	long_press_cnt=long_press_cnt>LONG_PRESS_TIME?LONG_PRESS_TIME:long_press_cnt;
+		//	if(long_press_cnt>=LONG_PRESS_TIME)long_press_button=2;
+		//}
+		//else if(!key3_state)
+		//{
+		//	long_press_cnt++;
+		//	long_press_cnt=long_press_cnt>LONG_PRESS_TIME?LONG_PRESS_TIME:long_press_cnt;
+		//	if(long_press_cnt>=LONG_PRESS_TIME)long_press_button=3;
+		//}
+		//else if(!key4_state)
+		//{
+		//	long_press_cnt++;
+		//	long_press_cnt=long_press_cnt>LONG_PRESS_TIME?LONG_PRESS_TIME:long_press_cnt;
+		//	if(long_press_cnt>=LONG_PRESS_TIME)long_press_button=4;
+		//}
+		//else
+		//{
+		//	long_press_cnt=0;
+		//	long_press_button=0;
+		//}
 			
 		//检测到按键按下之后并放开 释放一次信号量
 		extern uint8 button1,button2,button3,button4;

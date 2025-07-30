@@ -637,7 +637,7 @@ void UNIT_SET(){
 		unit_param_set(&pidline_line.Kd,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"lined");
 		
 		//unit_param_set(&Kr,TYPE_FLOAT,0.001,1  ,3,NORMAL_PAR,"liner");
-		unit_param_set(&pid1.setpoint,TYPE_FLOAT ,1  ,3  ,3,NORMAL_PAR,"speed");
+		unit_param_set(&pid1.setpoint,TYPE_FLOAT ,1  ,4  ,3,NORMAL_PAR,"speed");
 }
 
 void FUN_INIT(){

@@ -3,6 +3,8 @@
 PID_Controller_line pidline_line;
 PID_Controller_line pidline_turn;
 
+float derivative;
+
 float Kr;
 
 void PID_Init_line(PID_Controller_line* pid, float Kp, float Ki, float Kd, float setpoint) {
@@ -26,7 +28,8 @@ float PID_Compute_line(PID_Controller_line* pid, float feedback) {
     if(pid->integral < pid->out_min) pid->integral = pid->out_min;
     
     // 计算微分项
-    float derivative = error - pid->last_error;
+		derivative = error - pid->last_error;
+		derivative = derivative*8.0;
     pid->last_error = error;
     
     // 计算PID输出

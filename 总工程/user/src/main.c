@@ -81,6 +81,7 @@ int main (void)
 {
 		otsuflag=1;
 		COUNT=0;
+		count=1;
 		FLAG2=0;
 		
 		menuflag1=0;                                                                //用于控制发车
@@ -102,20 +103,20 @@ int main (void)
 		
     encoder_quad_init(ENCODER_1, ENCODER_1_A, ENCODER_1_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
     encoder_dir_init(ENCODER_2, ENCODER_2_A, ENCODER_2_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
-		pit_ms_init(TIM6_PIT, 5);                                                        // 编码器中断
+		pit_ms_init(TIM6_PIT, 30);                                                        // 编码器中断
 
-		PID_Init(&pid1,40.0f,0.8f,20.0f,200.0f);                                    //速度环
-		PID_SetOutputLimits(&pid1,-4000.0f,4000.0f);                                
-		PID_Init_line(&pidline_turn,52.0f,0.0f,0.00f,101.0f);                      //弯道转向环
-		PID_Init_line(&pidline_line,44.0f,0.0f,0.2f,101.0f);                      //直道转向环
+		PID_Init(&pid1,1.0f,0.9f,0.0f,1400.0f);                                    //速度环
+		PID_SetOutputLimits(&pid1,-5000.0f,5000.0f);                                
+		PID_Init_line(&pidline_turn,67.0f,0.0f,10.4f,101.0f);                      //弯道转向环
+		PID_Init_line(&pidline_line,46.0f,0.0f,0.04f,101.0f);                      //直道转向环
 		Kr=0.0;                                                                    //陀螺仪控制项
-		PID_SetOutputLimits_line(&pidline_turn,-3000.0f,3000.0f);
-		pit_ms_init(TIM8_PIT, 5);                                                    //pid中断
+		PID_SetOutputLimits_line(&pidline_turn,-4000.0f,4000.0f);
+		pit_ms_init(TIM8_PIT, 30);                                                    //pid中断
 		
 		
     while(1)
     {
-		
+		pid1.setpoint=1300.0;
 		if(menuflag1==0)
 		{
 			show_process(NULL);				//菜单启动
@@ -123,6 +124,14 @@ int main (void)
 				
 		if(menuflag1==1)
 		{
+				if(Search_Stop_Line>=108)
+				{
+					pid1.setpoint=pid1.setpoint*1.3;
+				}
+				if(Search_Stop_Line<=94)
+				{
+					pid1.setpoint=pid1.setpoint*0.9;
+				}
 				if(putoutL/2+turnL>0)
 				{
 				gpio_set_level(DIR_L,GPIO_HIGH);
@@ -161,10 +170,15 @@ int main (void)
 				//ips200_show_float(0,300,sumx,4,2);
 				//ips200_show_int (0, 260,COUNT1,3);
 				//ips200_show_int (0, 200,FLAG,3);
+				//ips200_show_int (0, 260,Search_Stop_Line,3);
 				
 				if(mt9v03x_finish_flag)
 				{
-					image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
+					if(count==1)
+					{
+						image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
+					}
+					count=-count;
 				if(menuflag3==1)
 				{
 						ips200_show_gray_image          (0, 0, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
@@ -192,7 +206,7 @@ int main (void)
 		//统计白线长度
 		for (W =1; W<=187; W++)
 		{
-				for (H = MT9V03X_H - 1; H >= 20; H--)
+				for (H = MT9V03X_H - 1; H >= 0; H--)
 				{
 						if(image_deal[H][W] == 0)
 						{break;}
@@ -258,23 +272,23 @@ int main (void)
         Left_Line [H] = left_border;       //左边线线数组
     }
 		
-		if(Search_Stop_Line<5)                                                     //识别到的最长白列过短视为出界
+		if(Search_Stop_Line<1)                                                     //识别到的最长白列过短视为出界
 		{
 				FLAG=1;
 		}
-		if(encoder_data_L>=250)                      //堵转保护
+		if(encoder_data_L>=2700)                      //堵转保护
 		{
 				FLAG=1;
 		}
-		if(encoder_data_L<=-250)                      
+		if(encoder_data_L<=-2700)                      
 		{
 				FLAG=1;
 		}
-		if(encoder_data_R>=250)                      
+		if(encoder_data_R>=2700)                      
 		{
 				FLAG=1;
 		}
-		if(encoder_data_R<=-250)                      
+		if(encoder_data_R<=-2700)                      
 		{
 				FLAG=1;
 		}
@@ -412,8 +426,10 @@ void pit_handler (void)
 		//printf("turnL  \t%f .\r\n", turnL);
 		//printf("%d,",encoder_data_R);
 		//printf("%d,",encoder_data_L);	
-		//printf("%d\n",160);
+		//printf("%d\n",600);
 		//printf("%d\n,",sum);
+		//printf("%f,",derivative);
+		//printf("%f\n,",putoutline);	
 
 		
     encoder_clear_count(ENCODER_1);                                             // 清空编码器计数
@@ -424,20 +440,20 @@ void pit_handler1 (void)
 {
     if(menuflag2==1)																												//菜单改前瞻
 		{
-		putinline=(Mid_Line[50]+Mid_Line[51]+Mid_Line[52]+Mid_Line[53])/4;
+		putinline=(Mid_Line[53]+Mid_Line[54]+Mid_Line[55]+Mid_Line[56])/4;
 		}
 		if(menuflag2==2)
 		{
 		putinline=(Mid_Line[60]+Mid_Line[61]+Mid_Line[62]+Mid_Line[63])/4;
 		}
 		
-		if(putinline>=116 || putinline<=76)                                     //转弯直道两套pid
+		if(putinline>=116 && putinline<=86)                                     //转弯直道两套pid
 		{
 			putoutline = PID_Compute_line(&pidline_turn, putinline);                                          
 		}
-		if(putinline<131 && putinline>71)
+		if(putinline<116 || putinline>86)
 		{
-			putoutline = PID_Compute_line(&pidline_line, putinline);
+			putoutline = PID_Compute_line(&pidline_turn, putinline);
 		}
 		
 		if(putinline>=101)                                                           //右转
