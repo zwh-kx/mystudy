@@ -4,7 +4,7 @@
 #include "pid.h"
 #include "pidline.h"
 
-
+extern float Kr; 
 
 //°´¼üĞÅºÅÁ¿¼°°´¼ü·´À¡ĞÅºÅÁ¿
 #ifdef  MENU_USE_RTT
@@ -39,8 +39,46 @@ param_set   my_param_set[MEM_SIZE];
 uint8       my_index[MEM_SIZE*2];
 static int  static_cnt=0;
 #endif
+#define FLASH_SECTION_INDEX       (127)                                         // å­˜å‚¨æ•°æ®ç”¨çš„æ‰‡åŒº å€’æ•°ç¬¬ä¸€ä¸ªæ‰‡åŒº
+#define FLASH_PAGE_INDEX          (1)                                           // å­˜å‚¨æ•°æ®ç”¨çš„é¡µç  å€’æ•°ç¬¬ä¸€ä¸ªé¡µç 
+void menu_save(void)
+{
+    if(flash_check(FLASH_SECTION_INDEX, FLASH_PAGE_INDEX))                      // åˆ¤æ–­æ˜¯å¦æœ‰æ•°æ®
+    {
+        flash_erase_page(FLASH_SECTION_INDEX, FLASH_PAGE_INDEX);                // æ“¦é™¤è¿™ä¸€é¡µ
+    }
+    flash_buffer_clear(); //æ“¦é™¤ç¼“å­˜åŒº
+    //å†™å…¥ç¼“å†²åŒº
+    flash_union_buffer[0].float_type  = pid1.Kp;
+    flash_union_buffer[1].float_type  = pid1.Ki;
+    flash_union_buffer[2].float_type  = pid1.Kd;
+		
+    flash_union_buffer[3].float_type  = pidline_turn.Kp;
+    flash_union_buffer[4].float_type  = pidline_turn.Kp2;
+    flash_union_buffer[5].float_type  = pidline_turn.Kd;
+		flash_union_buffer[6].float_type  = Kr;
+		
+		flash_union_buffer[7].float_type  = pid1.setpoint;
 
-//º¯ÊıÊı×éÖ¸Õë
+    flash_write_page_from_buffer(FLASH_SECTION_INDEX, FLASH_PAGE_INDEX);        // å‘æŒ‡å®š Flash æ‰‡åŒºçš„é¡µç å†™å…¥ç¼“å†²åŒºæ•°æ®
+}
+void menu_load(void)
+{   
+	  if(flash_check(FLASH_SECTION_INDEX, FLASH_PAGE_INDEX))                      // åˆ¤æ–­æ˜¯å¦æœ‰æ•°æ®
+    {
+    flash_read_page_to_buffer(FLASH_SECTION_INDEX, FLASH_PAGE_INDEX);           // å°†æ•°æ®ä» flash è¯»å–åˆ°ç¼“å†²åŒºad_page_to_buffer;
+    //å‚æ•°è¯»å‡º
+    pid1.Kp=flash_union_buffer[0].float_type;
+    pid1.Ki=flash_union_buffer[1].float_type;
+    pid1.Kd=flash_union_buffer[2].float_type;
+    pidline_turn.Kp=flash_union_buffer[3].float_type;
+    pidline_turn.Kp2=flash_union_buffer[4].float_type;
+    pidline_turn.Kd=flash_union_buffer[5].float_type;
+	  Kr=flash_union_buffer[6].float_type;
+    pid1.setpoint=flash_union_buffer[7].float_type;
+    flash_buffer_clear(); //æ“¦é™¤ç¼“å­˜åŒº
+		}
+}
 void (*current_operation_menu)(void);
 
 void dad_name_init(){
@@ -558,46 +596,20 @@ void menu_init()
     index_xy_init();
 
     /*-----------------ÅäÖÃflash---------------*/
-    #ifdef USE_FLASH
-    flash_init_wz();
-    #endif
-
-    /*----------------²Ëµ¥Ïß³Ì³õÊ¼»¯----------------*/
-    #ifdef  MENU_USE_RTT
-    rt_thread_t tid;
-    //´´½¨ÏÔÊ¾Ïß³Ì
-    tid = rt_thread_create("display", show_process, RT_NULL, 1024*2, 11, 5);
-    //Æô¶¯ÏÔÊ¾Ïß³Ì
-    if(RT_NULL != tid)
-    {
-        rt_thread_startup(tid);
-    }
-    #endif
+      menu_load();
 }
 
 //¸ü¸ÄÒ¹¼ä»ò°×ÌìÄ£Ê½
 static uint16 IPS200_BGCOLOR = RGB565_WHITE;
-void day_night(){
+void Save(){
 	if(IS_OK){
-		if(IPS200_BGCOLOR==RGB565_WHITE){
-		    IPS200_BGCOLOR = RGB565_BLACK;
-		    ips200_set_color(RGB565_WHITE,RGB565_BLACK);
-		    showstr(0,(SON_NUM+1)*16,"BLACK");
-		}
-		else if(IPS200_BGCOLOR==RGB565_BLACK){
-		    IPS200_BGCOLOR = RGB565_WHITE;
-            ips200_set_color(RGB565_BLACK,RGB565_WHITE);
-			showstr(0,(SON_NUM+1)*16,"WHITE");
-		}
+	menu_save();
 	}
 }
 
-void rand_color(){
+void Load(){
     if(IS_OK){
-        uint16 color;
-        color = rand()%(32768*2);
-        ips200_set_color(color,~color);
-        showstr(0,(SON_NUM+1)*16,"rand");
+        menu_load();
     }
 }
 //²Ëµ¥¿ÕÏĞº¯Êı
@@ -611,6 +623,7 @@ double test_c=100;
 uint16 test_d=20;
 uint32 test_e=32;
 
+int8 turn_target;
 
 uint16 menuflag1;
 uint16 menuflag2;
@@ -625,10 +638,10 @@ void UNIT_SET(){
     unit_param_set(&pid1.Kd,TYPE_FLOAT ,0.1  ,4  ,4,NORMAL_PAR,"d");
 		
     unit_param_set(&menuflag1,TYPE_UINT16,1  ,1  ,0,NORMAL_PAR,"cargo");
-    unit_param_set(&menuflag2,TYPE_UINT16,1  ,1  ,0,NORMAL_PAR,"target");
+    unit_param_set(&turn_target,TYPE_UINT16,1  ,3  ,0,NORMAL_PAR,"turn_target");
 		unit_param_set(&menuflag3,TYPE_UINT16,1  ,1  ,0,NORMAL_PAR,"view");
 		
-		unit_param_set(&pidline_turn.Kp,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"turnp");
+		unit_param_set(&pidline_turn.Kp,TYPE_FLOAT,1,3  ,1,NORMAL_PAR,"turnp");
     unit_param_set(&pidline_turn.Ki,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"turni");
 		unit_param_set(&pidline_turn.Kd,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"turnd");
 		
@@ -636,14 +649,51 @@ void UNIT_SET(){
     unit_param_set(&pidline_line.Ki,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"linei");
 		unit_param_set(&pidline_line.Kd,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"lined");
 		
-		//unit_param_set(&Kr,TYPE_FLOAT,0.001,1  ,3,NORMAL_PAR,"liner");
+		unit_param_set(&Kr,TYPE_FLOAT,0.001,1  ,3 ,NORMAL_PAR,"liner");
+		unit_param_set(&pidline_turn.Kp2,TYPE_FLOAT,0.01 , 1  ,3,NORMAL_PAR,"turnp2");
 		unit_param_set(&pid1.setpoint,TYPE_FLOAT ,1  ,4  ,3,NORMAL_PAR,"speed");
 }
 
 void FUN_INIT(){
 	//²Ëµ¥µ¥Ôªº¯ÊıÖ¸Õë³õÊ¼»¯
-	fun_init(NULL_FUN	,"NULL_FUN1");
-	fun_init(day_night	,"NULL_FUN2");
-	fun_init(rand_color	,"NULL_FUN3");
+	fun_init(Save	,"Save");
+	fun_init(Load	,"Load");
 	fun_init(NULL_FUN	,"NULL_FUN4");
 }
+
+
+		//printf("\r\n%f", sumx);
+		//printf("OUTL  \t%f .\r\n", putoutL);                 
+		//printf("OUTR  \t%f .\r\n", putoutR);                 
+		//printf("INL  \t%f .\r\n", putinL);                 
+		//printf("INR  \t%f .\r\n", putinR);
+		//printf("ENCODEL  \t%d .\r\n", encoder_data_L);                 
+		//printf("ENCODER  \t%d .\r\n", encoder_data_R);
+		//printf("ENCODER  \t%f.\r\n", putinline);
+		//printf("turnR  \t%f .\r\n", turnR);
+		//printf("turnL  \t%f .\r\n", turnL);
+		//printf("%d,",encoder_data_R);
+		//printf("%d,",encoder_data_L);	
+		//printf("%d\n",200);
+		//printf("%d\n,",sum);
+		//printf("%f,",derivative);
+		//printf("%f\n,",putoutline);	
+		//printf("\r\nIMU660RA gyro data:  x=%5d, y=%5d, z=%5d\r\n", imu660ra_gyro_x, imu660ra_gyro_y, imu660ra_gyro_z);
+
+				//ips200_show_float(0,180,putoutline,5,3);                                 
+				//ips200_show_float(0,200,putoutL,5,3);
+				//ips200_show_float(0,220,putoutR,5,3);
+				//ips200_show_float(0,240,turnL,5,3);
+				//ips200_show_float(0,260,turnR,5,3);
+				//ips200_show_float(0,280,encoder_data_L,5,3);
+				//ips200_show_float(0,300,encoder_data_R,5,3);
+				//ips200_show_int (0, 160,continuity_change_flag_R,3);
+				//ips200_show_int (0, 180,continuity_change_flag_L,3);
+				//ips200_show_int (0, 200,monotonicity_change_line,3);
+				//ips200_show_int (0, 220,right_down_line,3);
+				//ips200_show_int (0, 220,FLAG3,3);
+				//ips200_show_int (0, 240,COUNT,3);
+				//ips200_show_float(0,300,sumx,4,2);
+				//ips200_show_int (0, 260,COUNT1,3);
+				//ips200_show_int (0, 200,FLAG,3);
+				//ips200_show_int (0, 260,Search_Stop_Line,3);

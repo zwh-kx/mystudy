@@ -7,8 +7,9 @@ float derivative;
 
 float Kr;
 
-void PID_Init_line(PID_Controller_line* pid, float Kp, float Ki, float Kd, float setpoint) {
+void PID_Init_line(PID_Controller_line* pid, float Kp,float Kp2, float Ki, float Kd, float setpoint) {
     pid->Kp = Kp;
+		pid->Kp2 = Kp2;
     pid->Ki = Ki;
     pid->Kd = Kd;
     pid->setpoint = setpoint;

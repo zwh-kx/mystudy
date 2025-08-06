@@ -4,7 +4,8 @@
 
 
 typedef struct {
-    float Kp;          
+    float Kp; 
+		float Kp2;
     float Ki;         
     float Kd;   
     float setpoint;   
@@ -19,7 +20,7 @@ extern PID_Controller_line pidline_turn;
 extern float derivative;
 
 
-void PID_Init_line(PID_Controller_line* pid, float Kp, float Ki, float Kd,float setpoint);
+void PID_Init_line(PID_Controller_line* pid, float Kp, float Kp2, float Ki, float Kd,float setpoint);
 
 float PID_Compute_line(PID_Controller_line* pid, float feedback);
 
