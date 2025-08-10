@@ -469,6 +469,16 @@
               <FileType>5</FileType>
               <FilePath>..\code\element.h</FilePath>
             </File>
+            <File>
+              <FileName>whiteline.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\whiteline.c</FilePath>
+            </File>
+            <File>
+              <FileName>whiteline.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\whiteline.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

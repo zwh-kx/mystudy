@@ -8,12 +8,12 @@
 #include "pidline.h"
 #include "findline.h"
 #include "element.h"
+#include "whiteline.h"
 
-
-#define DIR_R               (A2 )
-#define PWM_R               (TIM5_PWM_CH4_A3)
-#define DIR_L               (A0 )
-#define PWM_L               (TIM5_PWM_CH2_A1)
+#define DIR_R               (A1 )
+#define PWM_R               (TIM5_PWM_CH1_A0)
+#define DIR_L               (A3 )
+#define PWM_L               (TIM5_PWM_CH3_A2)
 
 #define ENCODER_1                   (TIM3_ENCODER)
 #define ENCODER_1_A                 (TIM3_ENCODER_CH1_B4)
@@ -30,44 +30,15 @@ float turnR;
 
 int16 encoder_data_L = 0;
 int16 encoder_data_R = 0;
-uint8    W;                                                                      //宽
-uint8    H;                                                                      //高
 
 uint8    FLAG=0;                                                                 //停车标志位
-
-uint8    FLAG2;																																	 //圆环状态
-uint8    FLAG3;
-uint8    FLAG4;
-
-
-int32 sum;                                                                       //用于编码器计数
-float sumx;                                                                      //用于将x轴角度积分
-float x;                                                                         //用于接收陀螺仪x轴实际数据
 
 float putoutline;                                                              //pid输出
 float putinline;                                                               //pid输入
 
 int16 otsuflag;                                                                //大津法标志位，用于大津法分频
 
-uint8 White_Column[MT9V03X_W];
-
-uint8 Longest_White_Column_Left[2] ={0};                                      //0是长度，1是下标
-uint8 Longest_White_Column_Right[2] ={0};
-
-uint8 left_border;
-uint8 right_border;
-
-uint8 Mid_Line [MT9V03X_H];                                                   //中线数组
-uint8 image_deal[MT9V03X_H][MT9V03X_W];
-
-uint8 Left_Lost_Flag[MT9V03X_H];																							//左右边界丢线标志位
-uint8 Right_Lost_Flag[MT9V03X_H];
-
-
-uint8 down_search_start;                                                       //搜索截至行
-
-extern uint16 menuflag1;																											 //以下三个都是菜单标志位
-extern uint16 menuflag2;
+extern uint16 menuflag1;																											 //以下2个都是菜单标志位
 extern uint16 menuflag3;
 
 extern float Kr;                                                               //陀螺仪用于转向环的参数
@@ -75,14 +46,12 @@ extern float Kr;                                                               /
 int main (void)
 {
 		menuflag1=0;                                                                //用于控制发车
-		turn_target=50;                                                                //用于改前瞻
 		menuflag3=0;                                                                //用于视野
 		
 		clock_init(SYSTEM_CLOCK_120M);                                              // 初始化芯片时钟 工作频率为 120MHz
     debug_init();                                                               // 初始化默认 debug uart
 		
 		menu_init();                                                                //菜单初始化
-		
 		mt9v03x_init();                                                             //摄像头初始化
 		imu660ra_init();                                                             //陀螺仪初始化
 		
@@ -91,34 +60,31 @@ int main (void)
     gpio_init(DIR_R, GPO, GPIO_LOW, GPO_PUSH_PULL);                            // GPIO 初始化为输出 默认上拉输出高
     pwm_init(PWM_R, 17000, 0);                                                  // PWM 通道初始化频率 17KHz 占空比初始为 0
 		
-    encoder_quad_init(ENCODER_1, ENCODER_1_A, ENCODER_1_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
-    encoder_dir_init(ENCODER_2, ENCODER_2_A, ENCODER_2_B);                     // 初始化编码器模块与引脚 正交解码编码器模式
-		pit_ms_init(TIM6_PIT, 2);                                                        // 编码器中断
+    encoder_quad_init(ENCODER_1, ENCODER_1_A, ENCODER_1_B);                     // 初始化编码器
+    encoder_dir_init(ENCODER_2, ENCODER_2_A, ENCODER_2_B);                      
+		pit_ms_init(TIM6_PIT, 2);                                                   // 编码器中断
 
-		PID_Init(&pid1,110.0f,5.0f,0.0f,500.0f);                                    //速度环
-		PID_SetOutputLimits(&pid1,-5000.0f,5000.0f);                                
-		PID_Init_line(&pidline_turn,70.0f,0.0f,0.0f,0.0f,101.0f);                      //弯道转向环
-		//PID_Init_line(&pidline_line,46.0f,0.0f,0.0f,0.04f,101.0f);                      //直道转向环
+		PID_Init(&pid1,40.0f,15.0f,0.0f,500.0f);                                    //速度环
+		PID_SetOutputLimits(&pid1,-6000.0f,6000.0f);                                
+		PID_Init_line(&pidline_turn,58.0f,0.0f,0.0f,0.0f,101.0f);                      //弯道转向环
+		//PID_Init_line(&pidline_line,46.0f,0.0f,0.0f,0.04f,98.0f);                      //直道转向环
 		Kr=0.08;                                                                    //陀螺仪控制项
-		PID_SetOutputLimits_line(&pidline_turn,-6000.0f,6000.0f);
+		PID_SetOutputLimits_line(&pidline_turn,-7000.0f,7000.0f);
 		pit_ms_init(TIM8_PIT, 10);                                                    //pid中断
-		
-		
+
     while(1)
     {
-
 			show_process(NULL);				//菜单启动
 			ips200_show_int (0, 200,FLAG,3);
 			
 				if(mt9v03x_finish_flag)
 				{
 				image_threshold=otsuThreshold(mt9v03x_image[0],MT9V03X_W, MT9V03X_H);
-
-				if(menuflag3==1)
-				{
-						ips200_show_gray_image          (0, 0, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
-						menuflag1=2;
-				}
+					if(menuflag3==1)
+					{
+							ips200_show_gray_image          (0, 0, mt9v03x_image[0], MT9V03X_W, MT9V03X_H, MT9V03X_W, MT9V03X_H, image_threshold);
+							menuflag1=2;
+					}
 					//ips200_displayimage03x(mt9v03x_image[0], 188, 120);
           //根据阈值将图像二值化
 					for(H=0;H<MT9V03X_H;H++)
@@ -138,75 +104,9 @@ int main (void)
 					mt9v03x_finish_flag = 0;
 				}
 				
-		//统计白线长度
-		for (W =1; W<=187; W++)
-		{
-				for (H = MT9V03X_H - 1; H >= 0; H--)
-				{
-						if(image_deal[H][W] == 0)
-						{break;}
-						else
-						{White_Column[W]++;}
-				}
-		}
-		//从左到右找左边最长白列
-    for(W=1;W<=188;W++)
-    {
-        if (Longest_White_Column_Left[0] < White_Column[W])//找最长的那一列
-        {
-            Longest_White_Column_Left[0] = White_Column[W];//【0】是白列长度
-            Longest_White_Column_Left[1] = W;              //【1】是下标，第j列
-        }
-    }
-    //从右到左找右左边最长白列
-    for(W=188;W>=1;W--)//从右往左，注意条件，找到左边最长白列位置就可以停了
-    {
-        if (Longest_White_Column_Right[0] < White_Column[W])//找最长的那一列
-        {
-            Longest_White_Column_Right[0] = White_Column[W];//【0】是白列长度
-            Longest_White_Column_Right[1] = W;              //【1】是下标，第j列
-        }
-    }
-		Search_Stop_Line = Longest_White_Column_Right[0];//搜索截止行选取左或者右区别不大，他们两个理论上是一样的
-    
-    for (H = MT9V03X_H - 1; H >=MT9V03X_H-Search_Stop_Line; H--)
-    {//从最下面一行，访问到有效视野行
-        for (W = Longest_White_Column_Right[1]; W <= MT9V03X_W - 1 - 2; W++)
-        {
-            if (image_deal[H][W] ==1 && image_deal[H][W + 1] == 0 && image_deal[H][W + 2] == 0)//白黑黑，找到右边界
-            {
-                right_border = W;
-                Right_Lost_Flag[H] = 0; //右丢线数组，丢线置1，不丢线置0
-                break;
-            }
-            else if(W>=MT9V03X_W-1-2)//没找到右边界，把屏幕最右赋值给右边界
-            {
-                right_border = W;
-                Right_Lost_Flag[H] = 1; //右丢线数组，丢线置1，不丢线置0
-								Right_Lost_Time++;
-                break;
-            }
-        }
-				Right_Line[H] = right_border;      //右边线线数组
-        for (W = Longest_White_Column_Left[1]; W >= 0 + 2; W--)//往左边扫描
-        {//从最下面一行，访问到我的有效是视野行
-            if (image_deal[H][W] ==1 && image_deal[H][W - 1] == 0 && image_deal[H][W - 2] == 0)//黑黑白认为到达左边界
-            {
-                left_border = W;
-                Left_Lost_Flag[H] = 0; //左丢线数组，丢线置1，不丢线置0
-                break;
-            }
-            else if(W<=0+2)
-            {
-                left_border = W;//找到头都没找到边，就把屏幕最左右当做边界
-                Left_Lost_Flag[H] = 1; //左丢线数组，丢线置1，不丢线置0
-								Left_Lost_Time++;
-                break;
-            }
-        }
-        Left_Line [H] = left_border;       //左边线线数组
-    }
-		
+		findline();
+		//ips200_show_int (0, 260,Search_Stop_Line,3);
+		//printf("%d\n,",Search_Stop_Line);
 		if(Search_Stop_Line<1)                                                     //识别到的最长白列过短视为出界
 		{
 				FLAG=1;
@@ -227,10 +127,8 @@ int main (void)
 		{
 				FLAG=1;
 		}
-
 		Cross_Detect();                                                            //十字检测及其处理
-		
-			for(H=0;H<=100;H++)
+			for(H=0;H<=110;H++)
 			{
 				Mid_Line[H]=(Left_Line [H]+Right_Line[H])/2;
 			}
@@ -284,13 +182,13 @@ void pit_handler (void)
 		}
 		if(imu660ra_gyro_z>0)                                                      //陀螺仪
 		{
-				turnL=turnL+Kr*imu660ra_gyro_z;
-				turnR=turnR-Kr*imu660ra_gyro_z;
+				turnL=turnL-Kr*imu660ra_gyro_z;
+				turnR=turnR+Kr*imu660ra_gyro_z;
 		}
 		if(imu660ra_gyro_z<0)
 		{
-				turnL=turnL+Kr*imu660ra_gyro_z;
-				turnR=turnR-Kr*imu660ra_gyro_z;
+				turnL=turnL-Kr*imu660ra_gyro_z;
+				turnR=turnR+Kr*imu660ra_gyro_z;
 		}
 		pid1.setpoint=500.0;
 		if(FLAG)                                     //停车
@@ -302,14 +200,14 @@ void pit_handler (void)
 		
 		if(menuflag1==1)
 		{
-				if(Search_Stop_Line>=108)
+				if(Search_Stop_Line>=118)
 				{
 					if(Left_Lost_Time<=5 && Right_Lost_Time<=5)
 					{
 						pid1.setpoint=pid1.setpoint*1.0;
 					}
 				}
-				if(Search_Stop_Line<=98)
+				if(Search_Stop_Line<=90)
 				{
 					pid1.setpoint=pid1.setpoint*0.9;
 				}
@@ -334,14 +232,17 @@ void pit_handler (void)
 				pwm_set_duty(PWM_R,putoutL/2+turnR);
 				}
 		}
-		
 }
  
 void pit_handler1 (void)
 {
 		//菜单改前瞻
-
+		if(Search_Stop_Line<120-turn_target)
+		{
+			turn_target=121-Search_Stop_Line;
+		}
 		putinline=(Mid_Line[turn_target]+Mid_Line[turn_target+1]+Mid_Line[turn_target+2]+Mid_Line[turn_target+3])/4;
+		turn_target=45;                                                               //前瞻
 		encoder_data_R = -encoder_get_count(ENCODER_1);                              // 获取编码器计数
     encoder_data_L = encoder_get_count(ENCODER_2);
 		putinL=encoder_data_L;

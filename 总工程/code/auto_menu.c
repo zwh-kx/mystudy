@@ -633,8 +633,8 @@ extern float Kr;
 
 void UNIT_SET(){
 	//菜单单元调参参数初始化
-    unit_param_set(&pid1.Kp,TYPE_FLOAT ,0.1  ,3  ,3,NORMAL_PAR,"p");
-    unit_param_set(&pid1.Ki,TYPE_FLOAT ,0.1  ,3  ,3,NORMAL_PAR,"i");
+    unit_param_set(&pid1.Kp,TYPE_FLOAT ,1  ,3  ,3,NORMAL_PAR,"p");
+    unit_param_set(&pid1.Ki,TYPE_FLOAT ,1  ,3  ,3,NORMAL_PAR,"i");
     unit_param_set(&pid1.Kd,TYPE_FLOAT ,0.1  ,4  ,4,NORMAL_PAR,"d");
 		
     unit_param_set(&menuflag1,TYPE_UINT16,1  ,1  ,0,NORMAL_PAR,"cargo");
@@ -649,7 +649,7 @@ void UNIT_SET(){
     unit_param_set(&pidline_line.Ki,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"linei");
 		unit_param_set(&pidline_line.Kd,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"lined");
 		
-		unit_param_set(&Kr,TYPE_FLOAT,0.001,1  ,3 ,NORMAL_PAR,"liner");
+		unit_param_set(&Kr,TYPE_FLOAT,0.01,1  ,3 ,NORMAL_PAR,"liner");
 		unit_param_set(&pidline_turn.Kp2,TYPE_FLOAT,0.01 , 1  ,3,NORMAL_PAR,"turnp2");
 		unit_param_set(&pid1.setpoint,TYPE_FLOAT ,1  ,4  ,3,NORMAL_PAR,"speed");
 }
