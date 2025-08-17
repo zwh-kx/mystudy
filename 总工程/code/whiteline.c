@@ -18,12 +18,14 @@ uint8 right_border;
 void findline(void)
 {
 	//统计白线长度
-		for (W =1; W<=187; W++)
+		for (W =1; W<=188; W++)
 		{
 				for (H = MT9V03X_H - 1; H >= 0; H--)
 				{
 						if(image_deal[H][W] == 0)
-						{break;}
+						{
+							break;
+						}
 						else
 						{White_Column[W]++;}
 				}
@@ -46,11 +48,7 @@ void findline(void)
             Longest_White_Column_Right[1] = W;              //【1】是下标，第j列
         }
     }
-		Search_Stop_Line = Longest_White_Column_Left[0];//搜索截止行选取左或者右区别不大，他们两个理论上是一样的
-    if(Search_Stop_Line<10)
-		{
-				Search_Stop_Line=119;
-		}
+		Search_Stop_Line = Longest_White_Column_Right[0];//搜索截止行选取左或者右区别不大，他们两个理论上是一样的
     for (H = MT9V03X_H - 1; H >=MT9V03X_H-Search_Stop_Line; H--)
     {//从最下面一行，访问到有效视野行
         for (W = Longest_White_Column_Right[1]; W <= MT9V03X_W - 1 - 2; W++)

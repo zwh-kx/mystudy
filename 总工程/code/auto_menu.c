@@ -643,7 +643,7 @@ void UNIT_SET(){
 		
 		unit_param_set(&pidline_turn.Kp,TYPE_FLOAT,1,3  ,1,NORMAL_PAR,"turnp");
     unit_param_set(&pidline_turn.Ki,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"turni");
-		unit_param_set(&pidline_turn.Kd,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"turnd");
+		unit_param_set(&pidline_turn.Kd,TYPE_FLOAT,1,3  ,1,NORMAL_PAR,"turnd");
 		
 		unit_param_set(&pidline_line.Kp,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"linep");
     unit_param_set(&pidline_line.Ki,TYPE_FLOAT,0.1,3  ,1,NORMAL_PAR,"linei");
@@ -651,7 +651,7 @@ void UNIT_SET(){
 		
 		unit_param_set(&Kr,TYPE_FLOAT,0.01,1  ,3 ,NORMAL_PAR,"liner");
 		unit_param_set(&pidline_turn.Kp2,TYPE_FLOAT,0.01 , 1  ,3,NORMAL_PAR,"turnp2");
-		unit_param_set(&pid1.setpoint,TYPE_FLOAT ,1  ,4  ,3,NORMAL_PAR,"speed");
+		unit_param_set(&pid1.setpoint,TYPE_FLOAT ,50  ,4  ,3,NORMAL_PAR,"speed");
 }
 
 void FUN_INIT(){
@@ -682,7 +682,6 @@ void FUN_INIT(){
 
 				//ips200_show_float(0,180,putoutline,5,3);                                 
 				//ips200_show_float(0,200,putoutL,5,3);
-				//ips200_show_float(0,220,putoutR,5,3);
 				//ips200_show_float(0,240,turnL,5,3);
 				//ips200_show_float(0,260,turnR,5,3);
 				//ips200_show_float(0,280,encoder_data_L,5,3);
@@ -697,3 +696,4 @@ void FUN_INIT(){
 				//ips200_show_int (0, 260,COUNT1,3);
 				//ips200_show_int (0, 200,FLAG,3);
 				//ips200_show_int (0, 260,Search_Stop_Line,3);
+				//ips200_displayimage03x(mt9v03x_image[0], 188, 120);

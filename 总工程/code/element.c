@@ -3,7 +3,7 @@
 
 uint8 Right_Down_Find;
 uint8 Left_Down_Find;
-uint8 Search_Stop_Line;
+volatile uint8 Search_Stop_Line;
 int right_down_line;
 int left_down_line;
 int i,t;
@@ -89,9 +89,10 @@ void Find_Up_Point(int start,int end)
            abs(Left_Line[i]-Left_Line[i-1])<=5&&
            abs(Left_Line[i-1]-Left_Line[i-2])<=5&&
            abs(Left_Line[i-2]-Left_Line[i-3])<=5&&
-              (Left_Line[i]-Left_Line[i+2])>=5&&
+              (Left_Line[i]-Left_Line[i+1])>=5&&
+              (Left_Line[i]-Left_Line[i+2])>=8&&
               (Left_Line[i]-Left_Line[i+3])>=8&&
-              (Left_Line[i]-Left_Line[i+4])>=8)
+							Left_Line[i]>60)
         {
             Left_Up_Find=i;//获取行数即可
         }
@@ -99,9 +100,10 @@ void Find_Up_Point(int start,int end)
            abs(Right_Line[i]-Right_Line[i-1])<=5&&//下面两行位置差不多
            abs(Right_Line[i-1]-Right_Line[i-2])<=5&&
            abs(Right_Line[i-2]-Right_Line[i-3])<=5&&
-              (Right_Line[i]-Right_Line[i+2])<=-5&&
+              (Right_Line[i]-Right_Line[i+1])<=-5&&
+              (Right_Line[i]-Right_Line[i+2])<=-8&&
               (Right_Line[i]-Right_Line[i+3])<=-8&&
-              (Right_Line[i]-Right_Line[i+4])<=-8)
+							Right_Line[i]>94)
         {
             Right_Up_Find=i;//获取行数即可
         }
@@ -312,9 +314,9 @@ void Cross_Detect()
 		Left_Up_Find=0;
 		Right_Up_Find=0;
 		Both_Lost_Time=Left_Lost_Time>=Right_Lost_Time?Right_Lost_Time:Left_Lost_Time;
-        if(Both_Lost_Time>=20)//十字必定有双边丢线，在有双边丢线的情况下再开始找角点
+        if(Both_Lost_Time>=6)//十字必定有双边丢线，在有双边丢线的情况下再开始找角点
         {
-            Find_Up_Point( MT9V03X_H, 30 );
+            Find_Up_Point( MT9V03X_H, 5 );
             if(Left_Up_Find==0&&Right_Up_Find==0)//只要没有同时找到两个上点，直接结束
             {
                 return;
